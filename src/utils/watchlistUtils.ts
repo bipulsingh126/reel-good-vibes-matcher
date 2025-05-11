@@ -1,75 +1,63 @@
-
-export const addToWatchlist = (movieId: number): boolean => {
-  try {
-    // Get current watchlist from localStorage
-    const savedWatchlist = localStorage.getItem('watchlist');
-    let watchlistIds: number[] = [];
-    
-    if (savedWatchlist) {
-      watchlistIds = JSON.parse(savedWatchlist);
-    }
-    
-    // Check if movie is already in watchlist
-    if (!watchlistIds.includes(movieId)) {
-      // Add the movie ID to watchlist
-      watchlistIds.push(movieId);
-      // Save the updated watchlist
-      localStorage.setItem('watchlist', JSON.stringify(watchlistIds));
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Failed to add to watchlist:', error);
-    return false;
-  }
-};
-
-export const removeFromWatchlist = (movieId: number): boolean => {
-  try {
-    // Get current watchlist
-    const savedWatchlist = localStorage.getItem('watchlist');
-    let watchlistIds: number[] = [];
-    
-    if (savedWatchlist) {
-      watchlistIds = JSON.parse(savedWatchlist);
-    }
-
-    // Remove the movie ID if it exists
-    const updatedWatchlist = watchlistIds.filter(id => id !== movieId);
-    
-    // Save the updated watchlist
-    localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
-    
-    return true;
-  } catch (error) {
-    console.error('Failed to remove from watchlist:', error);
-    return false;
-  }
-};
-
+/**
+ * Checks if a movie is in the watchlist
+ * @param movieId The ID of the movie to check
+ * @returns True if the movie is in the watchlist, false otherwise
+ */
 export const isInWatchlist = (movieId: number): boolean => {
-  try {
-    const savedWatchlist = localStorage.getItem('watchlist');
-    if (!savedWatchlist) return false;
-    
-    const watchlistIds = JSON.parse(savedWatchlist) as number[];
-    return watchlistIds.includes(movieId);
-  } catch (error) {
-    console.error('Failed to check watchlist status:', error);
-    return false;
+  const watchlist = getWatchlist();
+  return watchlist.includes(movieId);
+};
+
+/**
+ * Gets the current watchlist from localStorage
+ * @returns Array of movie IDs in the watchlist
+ */
+export const getWatchlist = (): number[] => {
+  const watchlistStr = localStorage.getItem('watchlist');
+  return watchlistStr ? JSON.parse(watchlistStr) : [];
+};
+
+/**
+ * Gets the count of movies in the watchlist
+ * @returns Number of movies in the watchlist
+ */
+export const getWatchlistCount = (): number => {
+  return getWatchlist().length;
+};
+
+/**
+ * Adds a movie to the watchlist
+ * @param movieId The ID of the movie to add
+ */
+export const addToWatchlist = (movieId: number): void => {
+  const watchlist = getWatchlist();
+  if (!watchlist.includes(movieId)) {
+    watchlist.push(movieId);
+    localStorage.setItem('watchlist', JSON.stringify(watchlist));
   }
 };
 
-export const getWatchlistCount = (): number => {
-  try {
-    const savedWatchlist = localStorage.getItem('watchlist');
-    if (!savedWatchlist) return 0;
-    
-    const watchlistIds = JSON.parse(savedWatchlist) as number[];
-    return watchlistIds.length;
-  } catch (error) {
-    console.error('Failed to get watchlist count:', error);
-    return 0;
+/**
+ * Removes a movie from the watchlist
+ * @param movieId The ID of the movie to remove
+ */
+export const removeFromWatchlist = (movieId: number): void => {
+  const watchlist = getWatchlist();
+  const updatedWatchlist = watchlist.filter(id => id !== movieId);
+  localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
+};
+
+/**
+ * Toggles a movie in the watchlist (adds if not present, removes if present)
+ * @param movieId The ID of the movie to toggle
+ * @returns True if the movie was added, false if it was removed
+ */
+export const toggleWatchlist = (movieId: number): boolean => {
+  if (isInWatchlist(movieId)) {
+    removeFromWatchlist(movieId);
+    return false;
+  } else {
+    addToWatchlist(movieId);
+    return true;
   }
 };

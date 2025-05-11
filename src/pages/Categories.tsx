@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import MovieCard from '../components/MovieCard';
@@ -274,10 +273,10 @@ const Categories = () => {
         )}
       </div>
       
-      <footer className="bg-movie-dark py-8">
+      <footer className="bg-background border-t border-border py-8 mt-20">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-movie-muted text-sm">
-            © {new Date().getFullYear()} MovieMingle. All rights reserved.
+          <p className="text-muted-foreground text-sm">
+            © {new Date().getFullYear()} Movie Recommendation System. All rights reserved.
           </p>
         </div>
       </footer>
