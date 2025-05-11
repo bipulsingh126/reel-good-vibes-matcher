@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { Movie } from '../types/movie';
 import { Card } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -18,11 +18,12 @@ const MovieCard = ({ movie, featured = false }: MovieCardProps) => {
   const [inWatchlist, setInWatchlist] = useState(false);
   const { toast } = useToast();
 
+  // Check watchlist status only once on mount
   useEffect(() => {
     setInWatchlist(isInWatchlist(movie.id));
   }, [movie.id]);
 
-  const handleWatchlistToggle = (e: React.MouseEvent) => {
+  const handleWatchlistToggle = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -37,7 +38,7 @@ const MovieCard = ({ movie, featured = false }: MovieCardProps) => {
     
     // Trigger an event for the header to update the watchlist count
     window.dispatchEvent(new Event('storage'));
-  };
+  }, [movie.id, movie.title, inWatchlist, toast]);
 
   if (featured) {
     return (
@@ -47,6 +48,7 @@ const MovieCard = ({ movie, featured = false }: MovieCardProps) => {
           alt={movie.title}
           className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImageLoaded(true)}
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         <div className="absolute bottom-0 left-0 p-6">
@@ -78,6 +80,8 @@ const MovieCard = ({ movie, featured = false }: MovieCardProps) => {
             alt={movie.title}
             className={`w-full h-full object-cover transition-all duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
             onLoad={() => setImageLoaded(true)}
+            loading="lazy"
+            decoding="async"
           />
           
           {!imageLoaded && (
@@ -90,6 +94,7 @@ const MovieCard = ({ movie, featured = false }: MovieCardProps) => {
           <button
             className="absolute top-2 right-2 p-1.5 rounded-full bg-background/70 backdrop-blur-sm hover:bg-background/90 transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
             onClick={handleWatchlistToggle}
+            aria-label={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
           >
             {inWatchlist ? (
               <BookmarkCheck className="h-4 w-4 text-primary" />
@@ -124,4 +129,8 @@ const MovieCard = ({ movie, featured = false }: MovieCardProps) => {
   );
 };
 
-export default MovieCard;
+// Memoize the component to prevent unnecessary re-renders
+export default memo(MovieCard, (prevProps, nextProps) => {
+  // Only re-render if the movie ID changes
+  return prevProps.movie.id === nextProps.movie.id && prevProps.featured === nextProps.featured;
+});

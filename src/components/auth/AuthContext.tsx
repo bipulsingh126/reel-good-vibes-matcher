@@ -1,4 +1,39 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { initializeUserData, getUserData, saveUserData } from '../../services/userService';
+import { SubscriptionTier } from '../../types/movie';
+
+// Function to migrate anonymous watchlist to user account
+const migrateAnonymousWatchlist = (userId: string) => {
+  try {
+    // Get anonymous watchlist from localStorage
+    const watchlistStr = localStorage.getItem('watchlist');
+    if (!watchlistStr) return;
+    
+    const anonymousWatchlist = JSON.parse(watchlistStr);
+    if (!anonymousWatchlist.length) return;
+    
+    // Get user data
+    const userData = getUserData(userId);
+    if (!userData) return;
+    
+    // Merge watchlists (avoid duplicates)
+    const userWatchlist = userData.watchlist || [];
+    const mergedWatchlist = [...new Set([...userWatchlist, ...anonymousWatchlist])];
+    
+    // Save merged watchlist to user data
+    saveUserData(userId, {
+      ...userData,
+      watchlist: mergedWatchlist
+    });
+    
+    // Clear anonymous watchlist
+    localStorage.removeItem('watchlist');
+    
+    console.log(`Migrated ${anonymousWatchlist.length} items from anonymous watchlist to user account`);
+  } catch (error) {
+    console.error('Failed to migrate anonymous watchlist:', error);
+  }
+};
 
 interface User {
   id: string;
@@ -31,7 +66,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        // Initialize user data from localStorage
+        initializeUserData(parsedUser.id);
+        
+        // Migrate anonymous watchlist to user account
+        migrateAnonymousWatchlist(parsedUser.id);
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('user');
@@ -66,6 +108,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(userWithoutPassword);
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
       
+      // Initialize user data from localStorage
+      initializeUserData(userWithoutPassword.id);
+      
+      // Migrate anonymous watchlist to user account
+      migrateAnonymousWatchlist(userWithoutPassword.id);
+      
       return true;
     } catch (error) {
       console.error('Login failed:', error);
@@ -87,9 +135,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw new Error('User with this email already exists');
       }
       
+      // Generate a unique user ID
+      const userId = crypto.randomUUID();
+      
       // Create new user
       const newUser = {
-        id: crypto.randomUUID(),
+        id: userId,
         email,
         password, // In a real app, this would be hashed
         name,
@@ -104,6 +155,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { password: _, ...userWithoutPassword } = newUser;
       setUser(userWithoutPassword);
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      
+      // Get anonymous watchlist
+      const watchlistStr = localStorage.getItem('watchlist');
+      const anonymousWatchlist = watchlistStr ? JSON.parse(watchlistStr) : [];
+      
+      // Initialize default user data (watchlist, preferences, etc.)
+      const defaultUserData = {
+        id: userId,
+        email,
+        name,
+        subscription: {
+          tier: 'free' as SubscriptionTier,
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          autoRenew: false
+        },
+        purchasedMovies: [],
+        rentedMovies: [],
+        watchlist: anonymousWatchlist, // Use anonymous watchlist as initial watchlist
+        preferences: {
+          favoriteGenres: [],
+          contentRating: 'PG-13',
+          emailNotifications: true
+        },
+        paymentMethods: []
+      };
+      
+      // Save the user data
+      saveUserData(userId, defaultUserData);
+      
+      // Clear anonymous watchlist after migration
+      if (anonymousWatchlist.length > 0) {
+        localStorage.removeItem('watchlist');
+      }
       
       return true;
     } catch (error) {

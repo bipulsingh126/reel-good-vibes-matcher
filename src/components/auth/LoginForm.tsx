@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { Button } from "@/components/ui/button";
@@ -6,16 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/components/ui/use-toast";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Check for anonymous watchlist to notify user
+  useEffect(() => {
+    const watchlistStr = localStorage.getItem('watchlist');
+    const anonymousWatchlist = watchlistStr ? JSON.parse(watchlistStr) : [];
+    if (anonymousWatchlist.length > 0) {
+      setSuccess(`Sign in to save your watchlist with ${anonymousWatchlist.length} movies`);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +43,17 @@ const LoginForm = () => {
     try {
       const success = await login(email, password);
       if (success) {
+        // Check if watchlist was migrated
+        const watchlistWasMigrated = !localStorage.getItem('watchlist');
+        
+        if (watchlistWasMigrated) {
+          toast({
+            title: "Welcome back!",
+            description: "Your watchlist has been synced with your account.",
+            duration: 3000,
+          });
+        }
+        
         navigate("/");
       } else {
         setError("Invalid email or password");
@@ -64,6 +87,14 @@ const LoginForm = () => {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            
+            {success && (
+              <Alert className="mb-4 border-primary/50 bg-primary/10">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-primary">{success}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

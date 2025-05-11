@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/components/ui/use-toast";
 
 const RegisterForm = () => {
   const [name, setName] = useState("");
@@ -15,9 +16,20 @@ const RegisterForm = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Check for anonymous watchlist to notify user
+  useEffect(() => {
+    const watchlistStr = localStorage.getItem('watchlist');
+    const anonymousWatchlist = watchlistStr ? JSON.parse(watchlistStr) : [];
+    if (anonymousWatchlist.length > 0) {
+      setSuccess(`Your watchlist with ${anonymousWatchlist.length} movies will be saved to your account`);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +58,23 @@ const RegisterForm = () => {
     try {
       const success = await register(email, password, name);
       if (success) {
+        // Check if watchlist was migrated
+        const watchlistWasMigrated = !localStorage.getItem('watchlist');
+        
+        if (watchlistWasMigrated) {
+          toast({
+            title: "Account created successfully!",
+            description: "Your watchlist has been saved to your new account.",
+            duration: 3000,
+          });
+        } else {
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Movie Recommendation System.",
+            duration: 3000,
+          });
+        }
+        
         navigate("/");
       } else {
         setError("Registration failed. Email might already be in use.");
@@ -79,6 +108,14 @@ const RegisterForm = () => {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            
+            {success && (
+              <Alert className="mb-4 border-primary/50 bg-primary/10">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-primary">{success}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input

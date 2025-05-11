@@ -9,6 +9,14 @@ interface User {
   purchasedMovies: PurchasedMovie[];
   rentedMovies: RentedMovie[];
   paymentMethods: PaymentMethod[];
+  watchlist?: number[]; // Movie IDs in watchlist
+  preferences?: UserPreferences;
+}
+
+interface UserPreferences {
+  favoriteGenres: string[];
+  contentRating: string;
+  emailNotifications: boolean;
 }
 
 interface PaymentMethod {
@@ -47,7 +55,13 @@ let currentUser: User = {
       expiryDate: '12/25',
       isDefault: true
     }
-  ]
+  ],
+  watchlist: [],
+  preferences: {
+    favoriteGenres: [],
+    contentRating: 'PG-13',
+    emailNotifications: true
+  }
 };
 
 // Get current user
@@ -92,8 +106,8 @@ export const upgradeSubscription = (tier: SubscriptionTier): boolean => {
       }
     };
     
-    // Save to localStorage for persistence
-    localStorage.setItem('user', JSON.stringify(currentUser));
+    // Save user data to localStorage
+    saveUserData(currentUser.id, currentUser);
     
     return true;
   } catch (error) {
@@ -117,8 +131,8 @@ export const purchaseMovie = (movieId: number, price: number): boolean => {
       purchasedMovies: [...currentUser.purchasedMovies, purchase]
     };
     
-    // Save to localStorage for persistence
-    localStorage.setItem('user', JSON.stringify(currentUser));
+    // Save user data to localStorage
+    saveUserData(currentUser.id, currentUser);
     
     return true;
   } catch (error) {
@@ -146,8 +160,8 @@ export const rentMovie = (movieId: number, price: number, durationHours: number 
       rentedMovies: [...currentUser.rentedMovies, rental]
     };
     
-    // Save to localStorage for persistence
-    localStorage.setItem('user', JSON.stringify(currentUser));
+    // Save user data to localStorage
+    saveUserData(currentUser.id, currentUser);
     
     return true;
   } catch (error) {
@@ -201,8 +215,8 @@ export const addPaymentMethod = (paymentMethod: Omit<PaymentMethod, 'id'>): bool
       paymentMethods: [...currentUser.paymentMethods, newPaymentMethod]
     };
     
-    // Save to localStorage for persistence
-    localStorage.setItem('user', JSON.stringify(currentUser));
+    // Save user data to localStorage
+    saveUserData(currentUser.id, currentUser);
     
     return true;
   } catch (error) {
@@ -211,17 +225,102 @@ export const addPaymentMethod = (paymentMethod: Omit<PaymentMethod, 'id'>): bool
   }
 };
 
-// Initialize user from localStorage if available
-export const initializeUser = (): void => {
-  const savedUser = localStorage.getItem('user');
-  if (savedUser) {
-    try {
-      currentUser = JSON.parse(savedUser);
-    } catch (error) {
-      console.error('Failed to parse saved user data:', error);
+// Save user data to localStorage
+export const saveUserData = (userId: string, userData: User): void => {
+  try {
+    // Get all user data
+    const allUserData = getUsersData();
+    
+    // Update or add this user's data
+    allUserData[userId] = userData;
+    
+    // Save back to localStorage
+    localStorage.setItem('usersData', JSON.stringify(allUserData));
+    
+    // Update current user if it's the same user
+    if (currentUser.id === userId) {
+      currentUser = { ...userData };
     }
+  } catch (error) {
+    console.error('Failed to save user data:', error);
   }
 };
 
+// Get user data from localStorage
+export const getUserData = (userId: string): User | null => {
+  try {
+    const allUserData = getUsersData();
+    return allUserData[userId] || null;
+  } catch (error) {
+    console.error('Failed to get user data:', error);
+    return null;
+  }
+};
+
+// Get all users data
+export const getUsersData = (): Record<string, User> => {
+  try {
+    const usersDataStr = localStorage.getItem('usersData');
+    return usersDataStr ? JSON.parse(usersDataStr) : {};
+  } catch (error) {
+    console.error('Failed to get users data:', error);
+    return {};
+  }
+};
+
+// Initialize user data from localStorage if available
+export const initializeUserData = (userId: string): void => {
+  try {
+    const userData = getUserData(userId);
+    if (userData) {
+      currentUser = { ...userData };
+    }
+  } catch (error) {
+    console.error('Failed to initialize user data:', error);
+  }
+};
+
+// Add movie to watchlist
+export const addToUserWatchlist = (movieId: number): boolean => {
+  try {
+    if (!currentUser.watchlist) {
+      currentUser.watchlist = [];
+    }
+    
+    // Check if movie is already in watchlist
+    if (!currentUser.watchlist.includes(movieId)) {
+      currentUser.watchlist.push(movieId);
+      saveUserData(currentUser.id, currentUser);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to add movie to watchlist:', error);
+    return false;
+  }
+};
+
+// Remove movie from watchlist
+export const removeFromUserWatchlist = (movieId: number): boolean => {
+  try {
+    if (!currentUser.watchlist) {
+      return true;
+    }
+    
+    currentUser.watchlist = currentUser.watchlist.filter(id => id !== movieId);
+    saveUserData(currentUser.id, currentUser);
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to remove movie from watchlist:', error);
+    return false;
+  }
+};
+
+// Get user watchlist
+export const getUserWatchlist = (): number[] => {
+  return currentUser.watchlist || [];
+};
+
 // Initialize on import
-initializeUser(); 
+initializeUserData(currentUser.id); 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Film,
@@ -40,7 +40,8 @@ const Header = () => {
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    // Use passive event listener for better scroll performance
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     // Load watchlist count
     setWatchlistCount(getWatchlistCount());
@@ -225,4 +226,4 @@ const Header = () => {
   );
 };
 
-export default Header;
+export default memo(Header);

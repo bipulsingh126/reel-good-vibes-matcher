@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Play, X, AlertCircle } from 'lucide-react';
@@ -12,10 +12,11 @@ interface TrailerPlayerProps {
 const TrailerPlayer = ({ trailerUrl, thumbnailUrl, title }: TrailerPlayerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Extract video ID from YouTube URL if it's a YouTube video
-  const getYouTubeEmbedUrl = (url: string) => {
+  const getYouTubeEmbedUrl = useCallback((url: string) => {
     if (!url) return '';
     
     // Handle both youtube.com/embed and youtube.com/watch?v= formats
@@ -31,33 +32,48 @@ const TrailerPlayer = ({ trailerUrl, thumbnailUrl, title }: TrailerPlayerProps) 
     }
     
     return url;
-  };
+  }, []);
 
   const baseEmbedUrl = getYouTubeEmbedUrl(trailerUrl);
   
   // Add autoplay parameter only when dialog is open
-  const embedUrl = isOpen ? `${baseEmbedUrl}?autoplay=1` : baseEmbedUrl;
+  const embedUrl = isOpen ? `${baseEmbedUrl}?autoplay=1&rel=0&modestbranding=1` : baseEmbedUrl;
 
   // Handle dialog state changes
   useEffect(() => {
     if (isOpen) {
       setHasError(false);
-    }
-    
-    if (!isOpen && iframeRef.current) {
+      setIsLoading(true);
+    } else if (!isOpen && iframeRef.current) {
       try {
         // When closing the dialog, reset the iframe src to stop video playback
-        iframeRef.current.src = baseEmbedUrl;
+        iframeRef.current.src = '';
       } catch (error) {
         console.error('Error resetting iframe src:', error);
       }
     }
+    
+    // Clean up function to ensure video stops playing when component unmounts
+    return () => {
+      if (iframeRef.current) {
+        try {
+          iframeRef.current.src = '';
+        } catch (error) {
+          // Ignore errors during unmount
+        }
+      }
+    };
   }, [isOpen, baseEmbedUrl]);
 
-  const handleIframeError = () => {
+  const handleIframeError = useCallback(() => {
     setHasError(true);
+    setIsLoading(false);
     console.error('Failed to load trailer video');
-  };
+  }, []);
+  
+  const handleIframeLoad = useCallback(() => {
+    setIsLoading(false);
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -69,6 +85,8 @@ const TrailerPlayer = ({ trailerUrl, thumbnailUrl, title }: TrailerPlayerProps) 
                 src={thumbnailUrl} 
                 alt={`${title} trailer`} 
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           ) : (
@@ -104,6 +122,12 @@ const TrailerPlayer = ({ trailerUrl, thumbnailUrl, title }: TrailerPlayerProps) 
             <X className="h-4 w-4" />
           </Button>
           
+          {isLoading && isOpen && !hasError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          
           {isOpen && !hasError && (
             <iframe
               ref={iframeRef}
@@ -114,6 +138,8 @@ const TrailerPlayer = ({ trailerUrl, thumbnailUrl, title }: TrailerPlayerProps) 
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               onError={handleIframeError}
+              onLoad={handleIframeLoad}
+              loading="lazy"
             ></iframe>
           )}
           
@@ -137,4 +163,4 @@ const TrailerPlayer = ({ trailerUrl, thumbnailUrl, title }: TrailerPlayerProps) 
   );
 };
 
-export default TrailerPlayer; 
+export default memo(TrailerPlayer); 

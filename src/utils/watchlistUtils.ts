@@ -1,3 +1,9 @@
+import { 
+  getUserWatchlist, 
+  addToUserWatchlist, 
+  removeFromUserWatchlist 
+} from '../services/userService';
+
 /**
  * Checks if a movie is in the watchlist
  * @param movieId The ID of the movie to check
@@ -9,10 +15,19 @@ export const isInWatchlist = (movieId: number): boolean => {
 };
 
 /**
- * Gets the current watchlist from localStorage
+ * Gets the current watchlist from localStorage or user data
  * @returns Array of movie IDs in the watchlist
  */
 export const getWatchlist = (): number[] => {
+  // First try to get from user service (for logged in users)
+  const userWatchlist = getUserWatchlist();
+  
+  // If user watchlist exists, return it
+  if (userWatchlist && userWatchlist.length > 0) {
+    return userWatchlist;
+  }
+  
+  // Fall back to localStorage for anonymous users
   const watchlistStr = localStorage.getItem('watchlist');
   return watchlistStr ? JSON.parse(watchlistStr) : [];
 };
@@ -30,10 +45,16 @@ export const getWatchlistCount = (): number => {
  * @param movieId The ID of the movie to add
  */
 export const addToWatchlist = (movieId: number): void => {
-  const watchlist = getWatchlist();
-  if (!watchlist.includes(movieId)) {
-    watchlist.push(movieId);
-    localStorage.setItem('watchlist', JSON.stringify(watchlist));
+  // Try to add to user watchlist first (for logged in users)
+  const added = addToUserWatchlist(movieId);
+  
+  // If not added to user watchlist (not logged in), add to localStorage
+  if (!added) {
+    const watchlist = getWatchlist();
+    if (!watchlist.includes(movieId)) {
+      watchlist.push(movieId);
+      localStorage.setItem('watchlist', JSON.stringify(watchlist));
+    }
   }
 };
 
@@ -42,9 +63,15 @@ export const addToWatchlist = (movieId: number): void => {
  * @param movieId The ID of the movie to remove
  */
 export const removeFromWatchlist = (movieId: number): void => {
-  const watchlist = getWatchlist();
-  const updatedWatchlist = watchlist.filter(id => id !== movieId);
-  localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
+  // Try to remove from user watchlist first (for logged in users)
+  const removed = removeFromUserWatchlist(movieId);
+  
+  // If not removed from user watchlist (not logged in), remove from localStorage
+  if (!removed) {
+    const watchlist = getWatchlist();
+    const updatedWatchlist = watchlist.filter(id => id !== movieId);
+    localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
+  }
 };
 
 /**

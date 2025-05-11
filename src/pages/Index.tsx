@@ -1,18 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
-import MovieSection from '../components/MovieSection';
 import { Movie } from '../types/movie';
 import MovieCard from '../components/MovieCard';
-import PersonalRecommendations from '../components/PersonalRecommendations';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '../components/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
+// Lazy load components that are not needed for initial render
+const MovieSection = lazy(() => import('../components/MovieSection'));
+const PersonalRecommendations = lazy(() => import('../components/PersonalRecommendations'));
+
+// Loading fallback component
+const SectionSkeleton = () => (
+  <div className="w-full animate-pulse">
+    <div className="h-8 w-48 bg-muted rounded mb-4"></div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {Array(5).fill(0).map((_, i) => (
+        <div key={i} className="aspect-[2/3] bg-muted rounded"></div>
+      ))}
+    </div>
+  </div>
+);
+
 const Index = () => {
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const { isAuthenticated, user } = useAuth();
+  const [isLoaded, setIsLoaded] = useState(false);
   
   // Listen for search results from the Header component
   useEffect(() => {
@@ -21,6 +36,9 @@ const Index = () => {
     };
     
     window.addEventListener('searchResults' as any, handleSearchResults as any);
+    
+    // Mark as loaded after initial render
+    setIsLoaded(true);
     
     return () => {
       window.removeEventListener('searchResults' as any, handleSearchResults as any);
@@ -53,7 +71,9 @@ const Index = () => {
                     Here are some personalized movie recommendations just for you.
                   </p>
                 </div>
-                <PersonalRecommendations />
+                <Suspense fallback={<SectionSkeleton />}>
+                  <PersonalRecommendations />
+                </Suspense>
               </>
             ) : (
               <div className="bg-card/50 backdrop-blur-sm border border-border/40 rounded-lg p-8 mb-12">
@@ -74,12 +94,33 @@ const Index = () => {
             
             <ScrollArea className="w-full">
               <div className="space-y-12">
-                <MovieSection title="Trending Now" category="trending" />
-                <MovieSection title="Top Rated" category="topRated" />
-                <MovieSection title="Action Movies" category="action" />
-                <MovieSection title="Drama" category="drama" />
-                <MovieSection title="Sci-Fi" category="sciFi" />
-                <MovieSection title="Comedy" category="comedy" />
+                <Suspense fallback={<SectionSkeleton />}>
+                  <MovieSection title="Trending Now" category="trending" />
+                </Suspense>
+                
+                {isLoaded && (
+                  <>
+                    <Suspense fallback={<SectionSkeleton />}>
+                      <MovieSection title="Top Rated" category="topRated" />
+                    </Suspense>
+                    
+                    <Suspense fallback={<SectionSkeleton />}>
+                      <MovieSection title="Action Movies" category="action" />
+                    </Suspense>
+                    
+                    <Suspense fallback={<SectionSkeleton />}>
+                      <MovieSection title="Drama" category="drama" />
+                    </Suspense>
+                    
+                    <Suspense fallback={<SectionSkeleton />}>
+                      <MovieSection title="Sci-Fi" category="sciFi" />
+                    </Suspense>
+                    
+                    <Suspense fallback={<SectionSkeleton />}>
+                      <MovieSection title="Comedy" category="comedy" />
+                    </Suspense>
+                  </>
+                )}
               </div>
             </ScrollArea>
           </div>
@@ -99,9 +140,9 @@ const Index = () => {
             <div>
               <h3 className="font-semibold mb-4">Explore</h3>
               <ul className="space-y-2">
-                <li><a href="/trending" className="text-sm text-muted-foreground hover:text-primary transition-colors">Trending</a></li>
-                <li><a href="/categories" className="text-sm text-muted-foreground hover:text-primary transition-colors">Categories</a></li>
-                <li><a href="/watchlist" className="text-sm text-muted-foreground hover:text-primary transition-colors">Watchlist</a></li>
+                <li><Link to="/trending" className="text-sm text-muted-foreground hover:text-primary transition-colors">Trending</Link></li>
+                <li><Link to="/categories" className="text-sm text-muted-foreground hover:text-primary transition-colors">Categories</Link></li>
+                <li><Link to="/watchlist" className="text-sm text-muted-foreground hover:text-primary transition-colors">Watchlist</Link></li>
               </ul>
             </div>
             
