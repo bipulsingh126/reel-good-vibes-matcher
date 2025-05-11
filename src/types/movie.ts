@@ -14,3 +14,11 @@ export interface Movie {
 }
 
 export type MovieCategory = 'trending' | 'topRated' | 'action' | 'comedy' | 'drama' | 'horror' | 'sciFi' | 'recommended';
+
+export interface MovieFilter {
+  genre?: string;
+  year?: number;
+  rating?: number;
+  sortBy?: 'title' | 'releaseDate' | 'voteAverage';
+  sortOrder?: 'asc' | 'desc';
+}

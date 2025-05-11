@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import MovieDetail from "./pages/MovieDetail";
 import Trending from "./pages/Trending";
 import Categories from "./pages/Categories";
+import WatchList from "./pages/WatchList";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/trending" element={<Trending />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/watchlist" element={<WatchList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

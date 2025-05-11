@@ -1,12 +1,15 @@
 
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Film } from 'lucide-react';
+import { Film, Bookmark } from 'lucide-react';
 import SearchBar from './SearchBar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { getWatchlistCount } from '../utils/watchlistUtils';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [watchlistCount, setWatchlistCount] = useState(0);
   
   useEffect(() => {
     const handleScroll = () => {
@@ -16,9 +19,36 @@ const Header = () => {
         setIsScrolled(false);
       }
     };
-
+    
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    // Load watchlist count
+    setWatchlistCount(getWatchlistCount());
+    
+    // Listen for watchlist changes
+    const watchlistListener = () => {
+      setWatchlistCount(getWatchlistCount());
+    };
+    
+    window.addEventListener('storage', watchlistListener);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storage', watchlistListener);
+    };
+  }, []);
+
+  // Refresh watchlist count when component is mounted or focused
+  useEffect(() => {
+    const handleFocus = () => {
+      setWatchlistCount(getWatchlistCount());
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   return (
@@ -47,7 +77,27 @@ const Header = () => {
             <Link to="/categories" className="text-sm font-medium hover:text-movie-accent transition-colors">
               Categories
             </Link>
+            <Link to="/watchlist" className="text-sm font-medium hover:text-movie-accent transition-colors flex items-center">
+              <span>Watchlist</span>
+              {watchlistCount > 0 && (
+                <Badge variant="secondary" className="ml-2 bg-primary text-white">
+                  {watchlistCount}
+                </Badge>
+              )}
+            </Link>
           </nav>
+          
+          <Link to="/watchlist" className="md:hidden relative">
+            <Bookmark className="h-6 w-6" />
+            {watchlistCount > 0 && (
+              <Badge 
+                variant="secondary" 
+                className="absolute -top-2 -right-2 bg-primary text-white text-xs min-w-[18px] h-[18px] flex items-center justify-center p-0 rounded-full"
+              >
+                {watchlistCount}
+              </Badge>
+            )}
+          </Link>
           
           <Button className="bg-movie-accent hover:bg-movie-accent-hover">
             Sign In
