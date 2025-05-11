@@ -23,10 +23,8 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // SWC's optimization features
-      plugins: [
-        ['@swc/plugin-emotion', {}]
-      ]
+      // SWC's optimization features - only use if @swc/plugin-emotion is installed
+      plugins: process.env.NODE_ENV === 'production' ? [['@swc/plugin-emotion', {}]] : []
     }),
     // Split vendor chunks for better caching
     splitVendorChunkPlugin(),
@@ -50,6 +48,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "react": path.resolve(__dirname, "./node_modules/react"),
+      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
     },
   },
   build: {

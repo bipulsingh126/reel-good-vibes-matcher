@@ -1,4 +1,5 @@
 import { Movie, MovieCategory, StreamingInfo } from '../types/movie';
+import { getUserData } from './userService';
 
 // Mock movie data
 const movies: Movie[] = [
@@ -614,4 +615,87 @@ export const getRecommendedMovies = (movieId: number): Movie[] => {
 
 export const getPremiumMovies = (): Movie[] => {
   return movies.filter(movie => movie.isPremium);
+};
+
+/**
+ * Get personalized movie recommendations for a user based on their preferences and history
+ * @param userId The ID of the user to get recommendations for
+ * @returns Array of recommended movies with relevance scores
+ */
+export const getPersonalizedRecommendations = (userId: string): { movie: Movie, relevanceScore: number }[] => {
+  try {
+    // Get user data
+    const userData = getUserData(userId);
+    if (!userData) return [];
+    
+    // Initialize scoring factors
+    const genrePreferences = userData.preferences?.favoriteGenres || [];
+    const watchedMovies = [...userData.purchasedMovies, ...userData.rentedMovies].map(m => m.movieId);
+    const watchlist = userData.watchlist || [];
+    
+    // Calculate scores for each movie
+    const scoredMovies = movies.map(movie => {
+      // Skip movies the user has already watched
+      if (watchedMovies.includes(movie.id)) {
+        return null;
+      }
+      
+      let score = 0;
+      
+      // Genre match (up to 5 points)
+      const genreMatchCount = movie.genres.filter(genre => 
+        genrePreferences.includes(genre)
+      ).length;
+      score += genreMatchCount * 1.5;
+      
+      // Director match with previously watched movies (3 points)
+      const watchedDirectors = new Set(
+        movies
+          .filter(m => watchedMovies.includes(m.id))
+          .map(m => m.director)
+      );
+      if (watchedDirectors.has(movie.director)) {
+        score += 3;
+      }
+      
+      // Cast match with previously watched movies (up to 2 points)
+      const watchedCast = new Set(
+        movies
+          .filter(m => watchedMovies.includes(m.id))
+          .flatMap(m => m.cast)
+      );
+      const castMatchCount = movie.cast.filter(actor => watchedCast.has(actor)).length;
+      score += Math.min(castMatchCount, 2);
+      
+      // Rating boost (up to 2 points)
+      score += (movie.voteAverage / 10) * 2;
+      
+      // Similar to watchlist items (up to 3 points)
+      const watchlistGenres = new Set(
+        movies
+          .filter(m => watchlist.includes(m.id))
+          .flatMap(m => m.genres)
+      );
+      const watchlistGenreMatch = movie.genres.filter(genre => watchlistGenres.has(genre)).length;
+      score += watchlistGenreMatch * 0.5;
+      
+      // Recency boost (up to 1 point)
+      const currentYear = new Date().getFullYear();
+      const movieYear = parseInt(movie.releaseDate.split('-')[0]);
+      const yearDiff = currentYear - movieYear;
+      if (yearDiff <= 2) {
+        score += 1;
+      } else if (yearDiff <= 5) {
+        score += 0.5;
+      }
+      
+      return { movie, relevanceScore: parseFloat(score.toFixed(2)) };
+    }).filter(Boolean) as { movie: Movie, relevanceScore: number }[];
+    
+    // Sort by relevance score (highest first)
+    return scoredMovies.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  } catch (error) {
+    console.error('Failed to get personalized recommendations:', error);
+    return [];
+  }
 };

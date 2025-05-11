@@ -16,7 +16,8 @@ const categoryLabels: Record<MovieCategory, string> = {
   drama: 'Drama',
   horror: 'Horror',
   sciFi: 'Sci-Fi',
-  recommended: 'Recommended'
+  recommended: 'Recommended',
+  premium: 'Premium'
 };
 
 // Available years for filtering (2000-2023)
