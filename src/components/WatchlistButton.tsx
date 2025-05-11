@@ -40,41 +40,25 @@ const WatchlistButton = ({
   
   const handleWatchlistClick = () => {
     if (inWatchlist) {
-      const success = removeFromWatchlist(movieId);
-      if (success) {
-        setInWatchlist(false);
-        toast({
-          title: "Removed from watchlist",
-          description: `${movieTitle} has been removed from your watchlist`
-        });
-        
-        // Trigger storage event for other components
-        window.dispatchEvent(new Event('storage'));
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to remove movie from watchlist",
-          variant: "destructive"
-        });
-      }
+      removeFromWatchlist(movieId);
+      setInWatchlist(false);
+      toast({
+        title: "Removed from watchlist",
+        description: `${movieTitle} has been removed from your watchlist`
+      });
+      
+      // Trigger storage event for other components
+      window.dispatchEvent(new Event('storage'));
     } else {
-      const success = addToWatchlist(movieId);
-      if (success) {
-        setInWatchlist(true);
-        toast({
-          title: "Added to watchlist",
-          description: `${movieTitle} has been added to your watchlist`
-        });
-        
-        // Trigger storage event for other components
-        window.dispatchEvent(new Event('storage'));
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to add movie to watchlist",
-          variant: "destructive"
-        });
-      }
+      addToWatchlist(movieId);
+      setInWatchlist(true);
+      toast({
+        title: "Added to watchlist",
+        description: `${movieTitle} has been added to your watchlist`
+      });
+      
+      // Trigger storage event for other components
+      window.dispatchEvent(new Event('storage'));
     }
   };
 

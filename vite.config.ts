@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 // @ts-ignore - Type definitions might be missing
 import { visualizer } from "rollup-plugin-visualizer";
-import { splitVendorChunkPlugin } from "vite";
 // @ts-ignore - Type definitions might be missing
 import compression from "vite-plugin-compression";
 
@@ -23,11 +22,9 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // SWC's optimization features - only use if @swc/plugin-emotion is installed
-      plugins: process.env.NODE_ENV === 'production' ? [['@swc/plugin-emotion', {}]] : []
+      // Temporarily disable SWC's emotion plugin due to compatibility issues
+      plugins: []
     }),
-    // Split vendor chunks for better caching
-    splitVendorChunkPlugin(),
     // Compress assets
     compression({
       algorithm: 'gzip',
@@ -67,17 +64,19 @@ export default defineConfig(({ mode }) => ({
     // Improve chunk loading strategy
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-components': [
-            '@/components/ui/button',
-            '@/components/ui/card',
-            '@/components/ui/badge',
-            '@/components/ui/dialog',
-            '@/components/ui/dropdown-menu',
-            '@/components/ui/avatar',
-          ],
-        },
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react-vendor';
+            }
+            
+            if (id.includes('@/components/ui/')) {
+              return 'ui-components';
+            }
+            
+            return 'vendor';
+          }
+        }
       },
     },
     // Chunk size warning limit
