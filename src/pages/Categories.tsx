@@ -130,16 +130,16 @@ const Categories = () => {
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Genre</label>
                   <Select
-                    value={activeFilters.genre || ''}
+                    value={activeFilters.genre || 'all-genres'}
                     onValueChange={(value) => 
-                      setActiveFilters(prev => ({ ...prev, genre: value || undefined }))
+                      setActiveFilters(prev => ({ ...prev, genre: value === 'all-genres' ? undefined : value }))
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select Genre" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Genres</SelectItem>
+                      <SelectItem value="all-genres">All Genres</SelectItem>
                       <SelectItem value="action">Action</SelectItem>
                       <SelectItem value="adventure">Adventure</SelectItem>
                       <SelectItem value="comedy">Comedy</SelectItem>
@@ -154,16 +154,16 @@ const Categories = () => {
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">Release Year</label>
                   <Select
-                    value={activeFilters.year?.toString() || ''}
+                    value={activeFilters.year?.toString() || 'all-years'}
                     onValueChange={(value) => 
-                      setActiveFilters(prev => ({ ...prev, year: value ? parseInt(value) : undefined }))
+                      setActiveFilters(prev => ({ ...prev, year: value === 'all-years' ? undefined : parseInt(value) }))
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select Year" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Years</SelectItem>
+                      <SelectItem value="all-years">All Years</SelectItem>
                       {availableYears.map(year => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -192,16 +192,16 @@ const Categories = () => {
                   <label className="text-sm text-muted-foreground mb-2 block">Sort By</label>
                   <div className="flex gap-2">
                     <Select
-                      value={activeFilters.sortBy || ''}
+                      value={activeFilters.sortBy || 'default'}
                       onValueChange={(value: string) => 
-                        setActiveFilters(prev => ({ ...prev, sortBy: value as 'title' | 'releaseDate' | 'voteAverage' | undefined }))
+                        setActiveFilters(prev => ({ ...prev, sortBy: value === 'default' ? undefined : value as 'title' | 'releaseDate' | 'voteAverage' }))
                       }
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Sort By" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Default</SelectItem>
+                        <SelectItem value="default">Default</SelectItem>
                         <SelectItem value="title">Title</SelectItem>
                         <SelectItem value="releaseDate">Release Date</SelectItem>
                         <SelectItem value="voteAverage">Rating</SelectItem>
