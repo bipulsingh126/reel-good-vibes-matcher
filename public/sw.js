@@ -36,24 +36,48 @@ self.addEventListener('activate', event => {
 
 // Fetch event - network first, falling back to cache
 self.addEventListener('fetch', event => {
-  // Skip cross-origin requests
-  if (event.request.url.startsWith(self.location.origin)) {
+  // Skip non-GET requests and cross-origin requests
+  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Handle navigation requests differently (HTML pages)
+  if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .then(response => {
-          // Cache successful responses
-          if (response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(RUNTIME_CACHE).then(cache => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return response;
-        })
         .catch(() => {
-          // If network fails, try to serve from cache
-          return caches.match(event.request);
+          return caches.match('/index.html');
         })
     );
+    return;
   }
+
+  // For all other requests, try network first, then cache
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        // Cache successful responses
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(RUNTIME_CACHE).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try to serve from cache
+        return caches.match(event.request);
+      })
+  );
+});
+
+// Handle service worker errors
+self.addEventListener('error', event => {
+  console.error('Service Worker error:', event.message);
+});
+
+// Handle unhandled rejections
+self.addEventListener('unhandledrejection', event => {
+  console.error('Service Worker unhandled rejection:', event.reason);
 }); 

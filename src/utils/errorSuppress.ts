@@ -15,6 +15,13 @@ const SUPPRESSED_DOMAINS = [
   'gpteng.co'
 ];
 
+// List of error messages to suppress
+const SUPPRESSED_ERROR_MESSAGES = [
+  'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT',
+  'BloomFilter error',
+  'The resource was preloaded using link preload but not used'
+];
+
 // Store the original console functions
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
@@ -28,12 +35,19 @@ export function suppressConsoleErrors() {
   console.error = function(...args: any[]) {
     // Check if error message contains any of the suppressed domains
     const errorString = args.join(' ');
-    const shouldSuppress = SUPPRESSED_DOMAINS.some(domain => 
+    
+    // Check if the error message contains any suppressed domain
+    const hasSuppressedDomain = SUPPRESSED_DOMAINS.some(domain => 
       errorString.includes(domain)
     );
+    
+    // Check if the error message matches any of the suppressed error patterns
+    const hasSuppressedErrorMessage = SUPPRESSED_ERROR_MESSAGES.some(message =>
+      errorString.includes(message)
+    );
 
-    // If it's not a suppressed domain, log the error
-    if (!shouldSuppress && !errorString.includes('Failed to load resource: net::ERR_BLOCKED_BY_CLIENT')) {
+    // If it's not a suppressed error, log it
+    if (!hasSuppressedDomain && !hasSuppressedErrorMessage) {
       originalConsoleError.apply(console, args);
     }
   };
