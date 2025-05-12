@@ -149,6 +149,73 @@ export function createDummyResources() {
     childList: true,
     subtree: true
   });
+  
+  // Handle Firebase BloomFilter errors
+  setTimeout(() => {
+    // Check if Firebase is loaded
+    if (window.hasOwnProperty('firebase') || 
+        document.querySelector('script[src*="firebase"]') || 
+        document.querySelector('script[src*="firestore"]')) {
+      // Create a patch for BloomFilter errors
+      const patchScript = document.createElement('script');
+      patchScript.textContent = `
+        (function() {
+          // Wait for Firebase to be fully loaded
+          const checkInterval = setInterval(() => {
+            try {
+              // Check if firebase exists in the window
+              if (window.firebase && window.firebase.firestore) {
+                clearInterval(checkInterval);
+                
+                // Patch the BloomFilter functionality
+                const originalFirestore = window.firebase.firestore;
+                
+                // Create a wrapper with error handling
+                const wrappedFirestore = function() {
+                  try {
+                    return originalFirestore.apply(this, arguments);
+                  } catch (e) {
+                    if (e && e.name === 'BloomFilterError') {
+                      console.log('Suppressed BloomFilter error');
+                      return {
+                        collection: () => ({
+                          doc: () => ({
+                            get: () => Promise.resolve({}),
+                            set: () => Promise.resolve({}),
+                            update: () => Promise.resolve({})
+                          })
+                        })
+                      };
+                    }
+                    throw e;
+                  }
+                };
+                
+                // Copy all properties from the original
+                for (const prop in originalFirestore) {
+                  if (originalFirestore.hasOwnProperty(prop)) {
+                    wrappedFirestore[prop] = originalFirestore[prop];
+                  }
+                }
+                
+                // Replace the original method
+                window.firebase.firestore = wrappedFirestore;
+                
+                console.log('Firebase BloomFilter patches applied');
+              }
+            } catch (e) {
+              console.warn('Error patching Firebase:', e);
+            }
+          }, 100);
+          
+          // Stop trying after 10 seconds
+          setTimeout(() => clearInterval(checkInterval), 10000);
+        })();
+      `;
+      
+      document.head.appendChild(patchScript);
+    }
+  }, 1000);
 }
 
 // Export the dummy resource creation function

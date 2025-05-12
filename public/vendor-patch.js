@@ -80,10 +80,10 @@
       if (mutation.type === 'childList') {
         for (const node of mutation.addedNodes) {
           if (node.nodeName === 'SCRIPT') {
-            const script = node as HTMLScriptElement;
+            const script = node;
             // Handle any script tag that gets added
             if (script.src) {
-              // For vendor scripts, add our z variable initialization
+              // For vendor scripts, add our z variable initialization  
               if (script.src.includes('vendor-') || script.src.includes('X8AeWD1T')) {
                 // Create a new script that will execute before the vendor script
                 const patchScript = document.createElement('script');

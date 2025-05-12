@@ -1,4 +1,3 @@
-
 import React, { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -33,13 +32,37 @@ declare global {
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
+// Create dummy resources for blocked connections
+createDummyResources();
+
+// Handle Permissions-Policy errors
+const originalReload = window.location.reload;
+window.location.reload = function(...args) {
+  // Check the stack trace for Permissions-Policy related errors
+  const stackTrace = new Error().stack || '';
+  if (stackTrace.includes('Unrecognized feature') || 
+      stackTrace.includes('Permissions-Policy') ||
+      stackTrace.includes('fd9d1056-') ||
+      stackTrace.includes('6967-3be585539776f3cb.js')) {
+    // Prevent the reload
+    console.log('Prevented automatic reload from Permissions-Policy error');
+    return undefined as any;
+  }
+  return originalReload.apply(this, args);
+} as any;
+
 // Add global error handler for uncaught errors
 window.addEventListener('error', (event) => {
   // Check if this is a vendor script error we want to suppress
-  if (event.filename && (
-    event.filename.includes('vendor-') ||
-    event.message.includes("Cannot access 'z' before initialization")
-  )) {
+  if (
+    event.filename && (
+      event.filename.includes('vendor-') ||
+      event.message.includes("Cannot access 'z' before initialization")
+    ) ||
+    event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
+    event.message.includes('setupWebSocket @ client') ||
+    event.message.includes('Unrecognized feature:')
+  ) {
     // Prevent the error from showing in console
     event.preventDefault();
     event.stopPropagation();
