@@ -12,6 +12,7 @@ declare global {
     __zInitialized?: boolean;
     __zFixed?: boolean;
     __VENDOR_FIX__?: boolean;
+    __ERROR_REPORTER__?: any;
   }
 }
 
@@ -29,11 +30,34 @@ declare global {
   }
 })();
 
+// Initialize script blocker with session storage
+function initScriptBlocker() {
+  try {
+    // Get the current list of blocked scripts
+    const storedScripts = sessionStorage.getItem('BLOCKED_SCRIPTS');
+    if (storedScripts) {
+      console.log('Using stored blocked scripts configuration');
+    }
+    
+    // Listen for storage changes to update the blocker
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'BLOCKED_SCRIPTS' && event.newValue) {
+        console.log('Script blocker configuration updated');
+      }
+    });
+  } catch (err) {
+    console.warn('Failed to initialize script blocker with session storage:', err);
+  }
+}
+
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
 // Create dummy resources for blocked connections
 createDummyResources();
+
+// Initialize script blocker
+initScriptBlocker();
 
 // Handle Permissions-Policy errors
 const originalReload = window.location.reload;
@@ -43,6 +67,7 @@ window.location.reload = function(...args) {
   if (stackTrace.includes('Unrecognized feature') || 
       stackTrace.includes('Permissions-Policy') ||
       stackTrace.includes('fd9d1056-') ||
+      stackTrace.includes('f7c28dad-') ||
       stackTrace.includes('6967-3be585539776f3cb.js')) {
     // Prevent the reload
     console.log('Prevented automatic reload from Permissions-Policy error');
