@@ -37,6 +37,7 @@ import {
   CardContent,
   CardFooter,
 } from '@/components/ui/card';
+import { getWatchlist, removeFromWatchlist } from '../utils/watchlistUtils';
 
 type SortOption = 'title' | 'releaseDate' | 'voteAverage';
 type SortOrder = 'asc' | 'desc';
@@ -51,71 +52,67 @@ const WatchList = () => {
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Load watchlist from localStorage
-    const loadWatchlist = () => {
-      try {
-        const savedWatchlist = localStorage.getItem('watchlist');
-        if (savedWatchlist) {
-          const watchlistIds = JSON.parse(savedWatchlist) as number[];
-          const movies = watchlistIds.map(id => getMovieById(id)).filter(Boolean) as Movie[];
-          setWatchlistMovies(movies);
-          
-          // Extract all unique genres from the watchlist movies
-          const genres = new Set<string>();
-          movies.forEach(movie => {
-            movie.genres.forEach(genre => genres.add(genre));
-          });
-          
-          setAvailableGenres(Array.from(genres).sort());
-        }
-      } catch (error) {
-        console.error('Failed to load watchlist:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load your watchlist",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadWatchlist = () => {
+    try {
+      // Use the watchlistUtils function to get the watchlist
+      const watchlistIds = getWatchlist();
+      const movies = watchlistIds.map(id => getMovieById(id)).filter(Boolean) as Movie[];
+      setWatchlistMovies(movies);
+      
+      // Extract all unique genres from the watchlist movies
+      const genres = new Set<string>();
+      movies.forEach(movie => {
+        movie.genres.forEach(genre => genres.add(genre));
+      });
+      
+      setAvailableGenres(Array.from(genres).sort());
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to load watchlist:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your watchlist",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadWatchlist();
     
-    // Listen for storage events to update watchlist when changed from other components
-    const handleStorageChange = () => {
-      loadWatchlist();
+    // Set up event listener for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'watchlist' || e.key === 'usersData') {
+        loadWatchlist();
+      }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
+    // Custom event for watchlist changes within the app
+    const handleWatchlistChange = () => {
+      loadWatchlist();
+    };
+    
+    window.addEventListener('watchlist-changed', handleWatchlistChange);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('watchlist-changed', handleWatchlistChange);
     };
   }, [toast]);
 
-  const removeFromWatchlist = (movieId: number) => {
+  const handleRemoveFromWatchlist = (movieId: number) => {
     try {
-      // Get current watchlist
-      const savedWatchlist = localStorage.getItem('watchlist');
-      let watchlistIds: number[] = [];
+      // Use the watchlistUtils function to remove from watchlist
+      removeFromWatchlist(movieId);
       
-      if (savedWatchlist) {
-        watchlistIds = JSON.parse(savedWatchlist);
-      }
-
-      // Remove the movie ID
-      const updatedWatchlist = watchlistIds.filter(id => id !== movieId);
-      
-      // Save the updated watchlist
-      localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
-      
-      // Update state
+      // Update the UI
       setWatchlistMovies(watchlistMovies.filter(movie => movie.id !== movieId));
       
-      // Trigger storage event for other components
-      window.dispatchEvent(new Event('storage'));
+      // Dispatch a custom event to notify other components
+      window.dispatchEvent(new CustomEvent('watchlist-changed'));
       
       toast({
         title: "Removed from watchlist",
@@ -368,7 +365,7 @@ const WatchList = () => {
                   <Button 
                     variant="outline" 
                     size="icon"
-                    onClick={() => removeFromWatchlist(movie.id)}
+                    onClick={() => handleRemoveFromWatchlist(movie.id)}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />
