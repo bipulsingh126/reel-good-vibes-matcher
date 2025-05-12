@@ -3,77 +3,53 @@
  * This is particularly useful for errors from browser extensions and third-party scripts
  */
 
-export const suppressConsoleErrors = () => {
-  // Store the original console functions
-  const originalConsoleError = console.error;
-  const originalConsoleWarn = console.warn;
-  const originalConsoleLog = console.log;
+// List of domains to suppress errors from
+const SUPPRESSED_DOMAINS = [
+  'sentry.io',
+  'ingesteer.services-prod.nsvcs.net',
+  'analytics.tiktok.com',
+  'connect.facebook.net',
+  'cloudflareinsights.com',
+  'lovable-api.com',
+  'firestore.googleapis.com',
+  'gpteng.co'
+];
 
-  // Override console.error to filter out specific errors
-  console.error = function(...args) {
-    // Check if the error message matches the pattern we want to suppress
-    const errorMessage = args.join(' ');
-    
-    const suppressPatterns = [
-      'Could not establish connection. Receiving end does not exist',
-      'The play() request was interrupted',
-      'Failed to fetch',
-      'Access to fetch',
-      'has been blocked by CORS policy',
-      'Refused to load the script',
-      'because it violates the following Content Security Policy directive',
-      'Cannot read properties of undefined',
-      'net::ERR_BLOCKED_BY_CLIENT',
-      'Uncaught (in promise)',
-      'Cannot read properties of undefined (reading \'createContext\')',
-      'static.cloudflareinsights.com',
-      'AbortError: The play() request was interrupted',
-      'sentry',
-      'ingesteer',
-      'recorder.js',
-      'content-all.js',
-      'facebook.net',
-      'tiktok.com',
-      'google',
-      'analytics',
-      'WebSocket connection to',
-      'ReferenceError: Cannot access',
-      // Add more patterns as needed
-    ];
-    
-    // If the error matches any of our suppress patterns, don't log it
-    if (suppressPatterns.some(pattern => errorMessage.includes(pattern))) {
-      return;
+// Store the original console functions
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+const originalConsoleLog = console.log;
+
+/**
+ * Suppress console errors from third-party scripts
+ */
+export function suppressConsoleErrors() {
+  // Override console.error
+  console.error = function(...args: any[]) {
+    // Check if error message contains any of the suppressed domains
+    const errorString = args.join(' ');
+    const shouldSuppress = SUPPRESSED_DOMAINS.some(domain => 
+      errorString.includes(domain)
+    );
+
+    // If it's not a suppressed domain, log the error
+    if (!shouldSuppress && !errorString.includes('Failed to load resource: net::ERR_BLOCKED_BY_CLIENT')) {
+      originalConsoleError.apply(console, args);
     }
-    
-    // Otherwise, pass through to the original console.error
-    originalConsoleError.apply(console, args);
   };
 
-  // Override console.warn to filter out specific warnings
-  console.warn = function(...args) {
-    const warningMessage = args.join(' ');
-    
-    const suppressWarningPatterns = [
-      'Content Security Policy',
-      'CORS policy',
-      'Access-Control-Allow-Origin',
-      'cloudflareinsights',
-      'createContext',
-      'Unknown message type',
-      'WebSocket connection',
-      'iframe-pos',
-      'server connection lost',
-      // Add more patterns as needed
-    ];
-    
-    // If the warning matches any of our suppress patterns, don't log it
-    if (suppressWarningPatterns.some(pattern => warningMessage.includes(pattern))) {
-      return;
+  // Override console.warn
+  console.warn = function(...args: any[]) {
+    // Check if warning message contains any of the suppressed domains
+    const warnString = args.join(' ');
+    const shouldSuppress = SUPPRESSED_DOMAINS.some(domain => 
+      warnString.includes(domain)
+    );
+
+    // If it's not a suppressed domain, log the warning
+    if (!shouldSuppress && !warnString.includes('Content Security Policy')) {
+      originalConsoleWarn.apply(console, args);
     }
-    
-    // Otherwise, pass through to the original console.warn
-    originalConsoleWarn.apply(console, args);
   };
 
   // Override console.log for some specific patterns we want to suppress
@@ -96,19 +72,16 @@ export const suppressConsoleErrors = () => {
     // Otherwise, pass through to the original console.log
     originalConsoleLog.apply(console, args);
   };
-};
+}
 
-// Export a function to restore the original console behavior if needed
-export const restoreConsole = () => {
-  if ((console as any)._originalError) {
-    console.error = (console as any)._originalError;
-  }
-  
-  if ((console as any)._originalWarn) {
-    console.warn = (console as any)._originalWarn;
-  }
+/**
+ * Restore original console methods
+ */
+export function restoreConsole() {
+  console.error = originalConsoleError;
+  console.warn = originalConsoleWarn;
 
   if ((console as any)._originalLog) {
     console.log = (console as any)._originalLog;
   }
-};
+}
