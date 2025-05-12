@@ -12,7 +12,7 @@ export function createDummyResources() {
   
   // Create a dummy WebSocket class to replace blocked WebSocket connections
   const OriginalWebSocket = window.WebSocket;
-  window.WebSocket = function(url: string, protocols?: string | string[]) {
+  const FakeWebSocket = function(url: string, protocols?: string | string[]) {
     if (url.includes('localhost:8080')) {
       // Create a fake WebSocket that doesn't actually connect
       const fakeWS = {
@@ -47,12 +47,19 @@ export function createDummyResources() {
     return new OriginalWebSocket(url, protocols);
   } as unknown as typeof WebSocket;
   
-  // Preserve constructor properties
-  window.WebSocket.prototype = OriginalWebSocket.prototype;
-  window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
-  window.WebSocket.OPEN = OriginalWebSocket.OPEN;
-  window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
-  window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
+  // Copy the prototype without modifying read-only properties
+  FakeWebSocket.prototype = OriginalWebSocket.prototype;
+  
+  // Copy the static constants without assignment
+  Object.defineProperties(FakeWebSocket, {
+    CONNECTING: { value: OriginalWebSocket.CONNECTING },
+    OPEN: { value: OriginalWebSocket.OPEN },
+    CLOSING: { value: OriginalWebSocket.CLOSING },
+    CLOSED: { value: OriginalWebSocket.CLOSED }
+  });
+  
+  // Replace the original WebSocket
+  window.WebSocket = FakeWebSocket;
   
   // Create a MutationObserver to intercept script loading
   const observer = new MutationObserver((mutations) => {
