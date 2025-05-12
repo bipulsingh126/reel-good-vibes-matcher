@@ -5,9 +5,18 @@
 
 // Create dummy resources to replace blocked ones
 export function createDummyResources() {
-  // Ensure z is defined
+  // Ensure z is defined - use a more definitive approach
+  // Define z globally using Object.defineProperty for better control
   if (typeof window.z === 'undefined') {
-    window.z = {};
+    Object.defineProperty(window, 'z', {
+      value: {},
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+
+    // Add a flag to indicate z has been initialized
+    window.__zInitialized = true;
   }
   
   // Create a dummy WebSocket class to replace blocked WebSocket connections
@@ -61,6 +70,43 @@ export function createDummyResources() {
   // Replace the original WebSocket
   window.WebSocket = FakeWebSocket;
   
+  // Special fix for vendor-X8AeWD1T.js file which has the z initialization issue
+  const vendorScriptFix = () => {
+    // Find any script tags for the problematic vendor file
+    const vendorScripts = document.querySelectorAll('script[src*="vendor-"]');
+    vendorScripts.forEach(script => {
+      // For each vendor script, inject our z fix script right before it
+      const fixScript = document.createElement('script');
+      fixScript.textContent = `
+        // Ensure z exists before vendor script executes
+        (function() {
+          if (typeof window.z === 'undefined') {
+            Object.defineProperty(window, 'z', {
+              value: {},
+              writable: true,
+              configurable: true,
+              enumerable: true
+            });
+            window.__zInitialized = true;
+            console.log('z initialized via vendor script fix');
+          }
+        })();
+      `;
+      
+      if (script.parentNode) {
+        script.parentNode.insertBefore(fixScript, script);
+      }
+    });
+  };
+  
+  // Execute the vendor script fix immediately
+  vendorScriptFix();
+  
+  // Also run it when DOM is ready to catch any scripts added after initial load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', vendorScriptFix);
+  }
+  
   // Create a MutationObserver to intercept script loading
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
@@ -98,10 +144,24 @@ export function createDummyResources() {
             }
             
             // Special handling for vendor scripts
-            if (script.src && script.src.includes('vendor-')) {
+            if (script.src && (script.src.includes('vendor-') || script.src.includes('X8AeWD1T'))) {
               // Add z definition before vendor script loads
               const zDefScript = document.createElement('script');
-              zDefScript.textContent = 'window.z = window.z || {};';
+              zDefScript.textContent = `
+                // Define z variable before vendor script executes
+                (function() {
+                  if (typeof window.z === 'undefined') {
+                    Object.defineProperty(window, 'z', {
+                      value: {},
+                      writable: true,
+                      configurable: true,
+                      enumerable: true
+                    });
+                    window.__zInitialized = true;
+                    console.log('z initialized via mutation observer');
+                  }
+                })();
+              `;
               if (script.parentNode) {
                 script.parentNode.insertBefore(zDefScript, script);
               }
@@ -120,18 +180,46 @@ export function createDummyResources() {
   
   // Add event listener for vendor script errors
   window.addEventListener('error', function(event) {
-    if (event.message && event.message.includes("Cannot access 'z'") && 
-        event.filename && event.filename.includes('vendor-')) {
-      console.log('Prevented vendor script z error in blockHandler');
-      // Ensure z is defined
+    // Check specifically for the z initialization error
+    if (event.message && (
+      event.message.includes("Cannot access 'z'") ||
+      event.message.includes('before initialization') ||
+      (event.filename && event.filename.includes('vendor-'))
+    )) {
+      console.log('Prevented vendor script z error in blockHandler:', event.message);
+      
+      // Fix z immediately when the error occurs
       if (typeof window.z === 'undefined') {
-        window.z = {};
+        Object.defineProperty(window, 'z', {
+          value: {},
+          writable: true,
+          configurable: true,
+          enumerable: true
+        });
+        window.__zInitialized = true;
       }
+      
       // Prevent default action
       event.preventDefault();
+      event.stopPropagation();
       return false;
     }
   }, true);
+  
+  // Create a safety net for any potential z access issues
+  // This runs after a small delay to ensure it catches any late initialization issues
+  setTimeout(() => {
+    if (typeof window.z === 'undefined') {
+      Object.defineProperty(window, 'z', {
+        value: {},
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+      window.__zInitialized = true;
+      console.log('z initialized via safety net timeout');
+    }
+  }, 0);
 }
 
 // Export the dummy resource creation function

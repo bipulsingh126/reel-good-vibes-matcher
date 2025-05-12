@@ -19,7 +19,14 @@ declare global {
 // Ensure z variable is defined before anything else runs
 (function() {
   if (typeof window.z === 'undefined') {
-    window.z = {};
+    // Use Object.defineProperty for better control over the property
+    Object.defineProperty(window, 'z', {
+      value: {},
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+    window.__zInitialized = true;
   }
 })();
 
@@ -40,7 +47,13 @@ window.addEventListener('error', (event) => {
     
     // Ensure z is defined after catching the error
     if (typeof window.z === 'undefined') {
-      window.z = {};
+      Object.defineProperty(window, 'z', {
+        value: {},
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+      window.__zInitialized = true;
     }
     
     // Prevent the error from showing in console
