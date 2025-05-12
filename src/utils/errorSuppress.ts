@@ -1,3 +1,4 @@
+
 /**
  * Utility to suppress specific console errors that are unrelated to the application
  * This is particularly useful for errors from browser extensions and third-party scripts
@@ -24,6 +25,8 @@ export const suppressConsoleErrors = () => {
       'Cannot read properties of undefined',
       'net::ERR_BLOCKED_BY_CLIENT',
       'Uncaught (in promise)',
+      'Cannot read properties of undefined (reading \'createContext\')',
+      'static.cloudflareinsights.com',
       // Add more patterns as needed
     ];
     
@@ -44,6 +47,8 @@ export const suppressConsoleErrors = () => {
       'Content Security Policy',
       'CORS policy',
       'Access-Control-Allow-Origin',
+      'cloudflareinsights',
+      'createContext',
       // Add more patterns as needed
     ];
     
