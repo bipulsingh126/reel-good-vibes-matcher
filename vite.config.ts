@@ -48,8 +48,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Generate source maps for production
-    sourcemap: true,
+    // Generate source maps only in development
+    sourcemap: mode !== 'production',
     // Minify output
     minify: 'terser',
     // Configure Terser
@@ -63,16 +63,44 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
+          // Extract specific packages into their own chunks
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+            // React and related packages
+            if (id.includes('react') || 
+                id.includes('react-dom') || 
+                id.includes('react-router')) {
               return 'react-vendor';
             }
             
-            if (id.includes('@/components/ui/')) {
-              return 'ui-components';
+            // UI libraries
+            if (id.includes('@radix-ui') || 
+                id.includes('lucide-react') ||
+                id.includes('class-variance-authority') ||
+                id.includes('clsx') ||
+                id.includes('tailwind-merge')) {
+              return 'ui-vendor';
             }
             
+            // Form related
+            if (id.includes('react-hook-form') || 
+                id.includes('@hookform') || 
+                id.includes('input-otp')) {
+              return 'form-vendor';
+            }
+            
+            // Date related
+            if (id.includes('date-fns') || 
+                id.includes('react-day-picker')) {
+              return 'date-vendor';
+            }
+            
+            // All other third-party dependencies
             return 'vendor';
+          }
+          
+          // Group components by type
+          if (id.includes('/src/components/ui/')) {
+            return 'ui-components';
           }
         }
       },
