@@ -1,4 +1,3 @@
-
 // Script to patch vendor files after build
 import fs from 'fs';
 import path from 'path';
@@ -37,13 +36,14 @@ try {
     if (content.includes('Cannot access') || content.includes('before initialization') || file.includes('DWkEkHqs')) {
       console.log(`Found likely problematic vendor file: ${file}`);
       
-      // Look for the specific pattern around line 20 (where the error occurs)
-      // This is a more aggressive approach to fix the specific issue
-      
-      // Method 1: Add z variable definition at the beginning of the file
+      // Use a safer approach that doesn't redeclare z
       content = `/* Patched to fix z initialization */
-var z = {};
-window.z = window.z || z;
+(function(){
+  // Ensure z exists before the module runs
+  if (typeof window.z === 'undefined') {
+    window.z = {};
+  }
+})();
 ${content}`;
       
       // Method 2: Try to find and fix the specific code pattern
@@ -52,19 +52,26 @@ ${content}`;
       
       // Method 3: Add a special error handler for this specific error
       content = `/* Error handler for z initialization */
-window.addEventListener('error', function(event) {
-  if (event.message && event.message.includes('Cannot access \\'z\\'')) {
-    console.log('Prevented z initialization error');
-    event.preventDefault();
-    window.z = window.z || {};
-    return false;
+(function(){
+  // Add error handler if it doesn't exist yet
+  if (!window.__zErrorHandlerAdded) {
+    window.__zErrorHandlerAdded = true;
+    window.addEventListener('error', function(event) {
+      if (event.message && (
+        event.message.includes("Cannot access 'z'") ||
+        event.message.includes("Identifier 'z' has already been declared")
+      )) {
+        console.log('Prevented z error');
+        event.preventDefault();
+        return false;
+      }
+    });
   }
-});
+})();
 ${content}`;
     } else {
       // For other vendor files, just add the z variable definition
       content = `/* Patched to fix z initialization */
-window.z = window.z || {};
 (function(){
   // Ensure z exists before the module runs
   if (typeof window.z === 'undefined') {

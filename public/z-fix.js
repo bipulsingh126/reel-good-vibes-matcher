@@ -1,10 +1,12 @@
 // This script must run before any other scripts to fix the z variable issue
 (function() {
-  // Define z globally
-  window.z = {};
+  // Define z globally only if it doesn't exist
+  if (typeof window.z === 'undefined') {
+    window.z = {};
+  }
   
-  // Define z as a global variable
-  var z = window.z;
+  // Store reference to z without redeclaring it
+  const _z = window.z;
   
   // Create a global variable to track if we've fixed the error
   window.__zFixed = true;
@@ -40,14 +42,14 @@
       configurable: true,
       enumerable: true,
       get: function() {
-        return z;
+        return _z;
       },
       set: function(newValue) {
         // Merge any new properties but keep our object
         if (newValue && typeof newValue === 'object') {
-          Object.assign(z, newValue);
+          Object.assign(_z, newValue);
         }
-        return z;
+        return _z;
       }
     });
   } catch (e) {
@@ -58,9 +60,10 @@
   window.addEventListener('error', function(event) {
     if (event.message && (
       event.message.includes("Cannot access 'z'") || 
-      event.message.includes('before initialization')
+      event.message.includes('before initialization') ||
+      event.message.includes("Identifier 'z' has already been declared")
     )) {
-      console.log('Prevented z initialization error');
+      console.log('Prevented z error:', event.message);
       event.preventDefault();
       event.stopPropagation();
       return false;

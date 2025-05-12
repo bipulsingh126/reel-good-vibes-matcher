@@ -76,8 +76,8 @@ export default defineConfig(({ mode }) => ({
         drop_debugger: mode === 'production',
       },
       format: {
-        // Fix variable initialization issues
-        preamble: 'var z = {}; window.z = z;',
+        // Fix variable initialization issues with a safer approach
+        preamble: '(function(){if(typeof window.z==="undefined")window.z={};})()',
       },
     },
     // Improve chunk loading strategy

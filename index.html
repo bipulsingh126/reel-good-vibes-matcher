@@ -1,9 +1,13 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <!-- CRITICAL: Define z variable inline before any scripts load -->
-    <script>window.z = {};</script>
+    <script>
+      // Only define z if it doesn't exist yet
+      if (typeof window.z === 'undefined') {
+        window.z = {};
+      }
+    </script>
     
     <!-- Load z-fix.js before any other scripts -->
     <script src="/z-fix.js"></script>
@@ -32,8 +36,10 @@
     
     <!-- Initialize variables to prevent "access before initialization" errors -->
     <script>
-      // Pre-define variables that might be accessed before initialization
-      window.z = window.z || {};
+      // Use a safer approach to define z
+      if (typeof window.z === 'undefined') {
+        window.z = {};
+      }
       window.__VENDOR_FIX__ = true;
     </script>
     
