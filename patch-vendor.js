@@ -1,4 +1,3 @@
-
 // Script to patch vendor files after build
 import fs from 'fs';
 import path from 'path';
@@ -65,12 +64,6 @@ ${content}`;
       // For other vendor files, just add the z variable definition
       content = `/* Patched to fix z initialization */
 window.z = window.z || {};
-(function(){
-  // Ensure z exists before the module runs
-  if (typeof window.z === 'undefined') {
-    window.z = {};
-  }
-})();
 ${content}`;
     }
     
