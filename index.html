@@ -1,8 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- CRITICAL: Define z variable inline before any scripts load -->
-    <script>window.z = {};</script>
+    <!-- Define z variable inline before ANY scripts load -->
+    <script>
+      // Ensure z is defined globally
+      window.z = window.z || {};
+      
+      // Create a safety proxy
+      window.z = new Proxy(window.z, {
+        get: function(target, prop) {
+          return target[prop];
+        },
+        set: function(target, prop, value) {
+          target[prop] = value;
+          return true;
+        }
+      });
+      
+      // Block third-party requests that cause ERR_BLOCKED_BY_CLIENT
+      const originalFetch = window.fetch;
+      window.fetch = function(url, options) {
+        if (typeof url === 'string' && (
+          url.includes('cloudflareinsights.com') || 
+          url.includes('sentry.io') ||
+          url.includes('facebook.net') ||
+          url.includes('tiktok.com')
+        )) {
+          // Return a resolved promise to silently ignore blocked requests
+          return Promise.resolve(new Response('', { status: 200 }));
+        }
+        return originalFetch.apply(this, arguments);
+      };
+    </script>
     
     <!-- Load z-initializer.js before any other scripts -->
     <script src="/z-initializer.js"></script>
@@ -10,6 +39,7 @@
     <!-- Load vendor patch script -->
     <script src="/vendor-patch.js"></script>
     
+    <!-- Meta tags and CSP -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ws: wss: http://localhost:* https://*.lovable.dev https://*.lovableproject.com https://*.lovable.app https://*.gpteng.co https://*.cloudflareinsights.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.cloudflareinsights.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:;">
@@ -32,21 +62,6 @@
       // Pre-define variables that might be accessed before initialization
       window.z = window.z || {};
       window.__VENDOR_FIX__ = true;
-      
-      // Block certain third-party requests that cause ERR_BLOCKED_BY_CLIENT
-      const originalFetch = window.fetch;
-      window.fetch = function(url, options) {
-        if (typeof url === 'string' && (
-          url.includes('cloudflareinsights.com') || 
-          url.includes('sentry.io') ||
-          url.includes('facebook.net') ||
-          url.includes('tiktok.com')
-        )) {
-          // Return a resolved promise to silently ignore blocked requests
-          return Promise.resolve(new Response('', { status: 200 }));
-        }
-        return originalFetch.apply(this, arguments);
-      };
     </script>
   </head>
 
