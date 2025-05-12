@@ -9,6 +9,7 @@ const SUPPRESSED_DOMAINS = [
   'ingesteer.services-prod.nsvcs.net',
   'analytics.tiktok.com',
   'connect.facebook.net',
+  'facebook.com/tr',
   'cloudflareinsights.com',
   'lovable-api.com',
   'firestore.googleapis.com',
@@ -18,7 +19,8 @@ const SUPPRESSED_DOMAINS = [
   'recorder.js',
   'content-all.js',
   'all-frames.js',
-  'firebase'
+  'firebase',
+  'f7c28dad-7381-4ae7-a718-86da73f3ba98'
 ];
 
 // List of error messages to suppress

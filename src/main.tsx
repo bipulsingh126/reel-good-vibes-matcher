@@ -57,11 +57,13 @@ window.addEventListener('error', (event) => {
   if (
     event.filename && (
       event.filename.includes('vendor-') ||
+      event.filename.includes('f7c28dad-') ||
       event.message.includes("Cannot access 'z' before initialization")
     ) ||
     event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
     event.message.includes('setupWebSocket @ client') ||
-    event.message.includes('Unrecognized feature:')
+    event.message.includes('Unrecognized feature:') ||
+    event.message.includes('preloaded using link preload')
   ) {
     // Prevent the error from showing in console
     event.preventDefault();

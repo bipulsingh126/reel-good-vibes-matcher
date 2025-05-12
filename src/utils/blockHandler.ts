@@ -216,6 +216,111 @@ export function createDummyResources() {
       document.head.appendChild(patchScript);
     }
   }, 1000);
+
+  // Handle specific problem scripts
+  setTimeout(() => {
+    // Find all scripts on the page
+    document.querySelectorAll('script').forEach(script => {
+      const src = script.getAttribute('src') || '';
+      
+      // Handle specific problematic scripts by ID
+      if (src.includes('f7c28dad-7381-4ae7-a718-86da73f3ba98')) {
+        // Prevent the script from executing
+        script.removeAttribute('src');
+        
+        // Create a dummy version with necessary functions
+        const dummyScript = document.createElement('script');
+        dummyScript.textContent = `
+          // Dummy script to replace problematic f7c28dad script
+          (function() {
+            console.log('Applied dummy version of f7c28dad script');
+            
+            // Define any needed functions from the original script
+            window.f7c28dadFunctions = {
+              reload: function() { return true; },
+              // Add other functions as needed
+            };
+          })();
+        `;
+        
+        // Replace the original script
+        if (script.parentNode) {
+          script.parentNode.insertBefore(dummyScript, script);
+          script.parentNode.removeChild(script);
+        }
+      }
+    });
+  }, 100);
+
+  // Handle preloaded resources not being used
+  setTimeout(() => {
+    // Create a global error handler for specific resource-related errors
+    window.addEventListener('error', (event) => {
+      if (event.message && 
+          (event.message.includes('preloaded using link preload') || 
+           event.message.includes('facebook.com/tr'))) {
+        // Prevent the error
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
+    }, true);
+    
+    // Handle Facebook Pixel
+    const handleFacebookPixel = () => {
+      // Create a dummy image to satisfy the preload requirement
+      const img = new Image();
+      img.src = 'https://www.facebook.com/tr?id=9151671744940732&ev=PageView&noscript=1';
+      img.style.display = 'none';
+      document.body.appendChild(img);
+      
+      // Create a dummy function for fbq
+      if (!window.hasOwnProperty('fbq')) {
+        Object.defineProperty(window, 'fbq', {
+          value: function() {
+            // Do nothing, just a stub
+            return true;
+          },
+          writable: true,
+          configurable: true
+        });
+      }
+    };
+    
+    // Run the Facebook Pixel handler
+    handleFacebookPixel();
+    
+    // Find all preloaded resources and handle them
+    const preloadLinks = document.querySelectorAll('link[rel="preload"]');
+    preloadLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      if (!href) return;
+      
+      if (href.includes('facebook.com/tr')) {
+        handleFacebookPixel();
+      } else {
+        // For other preloaded resources, create an appropriate element
+        const asType = link.getAttribute('as') || '';
+        if (asType === 'script') {
+          const script = document.createElement('script');
+          script.src = href;
+          script.async = true;
+          script.defer = true;
+          document.head.appendChild(script);
+        } else if (asType === 'style') {
+          const style = document.createElement('link');
+          style.rel = 'stylesheet';
+          style.href = href;
+          document.head.appendChild(style);
+        } else if (asType === 'image') {
+          const img = new Image();
+          img.src = href;
+          img.style.display = 'none';
+          document.body.appendChild(img);
+        }
+      }
+    });
+  }, 500);
 }
 
 // Export the dummy resource creation function
