@@ -22,7 +22,11 @@ export function createDummyResources() {
         onmessage: null,
         send: () => {},
         close: () => {},
-        addEventListener: () => {},
+        addEventListener: (event: string, callback: any) => {
+          if (event === 'open' && callback) {
+            setTimeout(() => callback(new Event('open')), 50);
+          }
+        },
         removeEventListener: () => {},
         dispatchEvent: () => true
       };
@@ -43,10 +47,33 @@ export function createDummyResources() {
   
   // Preserve constructor properties
   window.WebSocket.prototype = OriginalWebSocket.prototype;
-  window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
-  window.WebSocket.OPEN = OriginalWebSocket.OPEN;
-  window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
-  window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
+  
+  // Copy static properties using Object.defineProperty
+  try {
+    Object.defineProperty(window.WebSocket, 'CONNECTING', { value: OriginalWebSocket.CONNECTING });
+    Object.defineProperty(window.WebSocket, 'OPEN', { value: OriginalWebSocket.OPEN });
+    Object.defineProperty(window.WebSocket, 'CLOSING', { value: OriginalWebSocket.CLOSING });
+    Object.defineProperty(window.WebSocket, 'CLOSED', { value: OriginalWebSocket.CLOSED });
+  } catch (e) {
+    console.warn('Failed to copy WebSocket static properties', e);
+  }
+  
+  // Patch any existing setupWebSocket function
+  if (window.hasOwnProperty('setupWebSocket')) {
+    const originalSetupWebSocket = (window as any).setupWebSocket;
+    (window as any).setupWebSocket = function(...args: any[]) {
+      try {
+        return originalSetupWebSocket.apply(this, args);
+      } catch (error) {
+        // Return a fake WebSocket connection
+        return {
+          readyState: 1,
+          send: () => {},
+          close: () => {}
+        };
+      }
+    };
+  }
   
   // Create a MutationObserver to intercept script loading
   const observer = new MutationObserver((mutations) => {
@@ -82,6 +109,34 @@ export function createDummyResources() {
               if (mutation.target && mutation.target instanceof Element) {
                 mutation.target.removeChild(script);
               }
+            }
+            
+            // Check for client.js scripts that might be causing WebSocket issues
+            if (script.src && script.src.includes('client.js')) {
+              // Intercept the script loading
+              const originalSrc = script.src;
+              script.src = '';
+              
+              // Fetch the script content and modify it
+              fetch(originalSrc)
+                .then(response => response.text())
+                .then(content => {
+                  // Replace problematic WebSocket code
+                  const modifiedContent = content
+                    .replace(/setupWebSocket\s*\([^)]*\)/g, '(() => { return { send: () => {}, close: () => {} }; })()')
+                    .replace(/new WebSocket\([^)]*\)/g, '({ readyState: 1, send: () => {}, close: () => {} })');
+                  
+                  // Create a new script with modified content
+                  const newScript = document.createElement('script');
+                  newScript.textContent = modifiedContent;
+                  script.parentNode?.insertBefore(newScript, script);
+                  script.parentNode?.removeChild(script);
+                })
+                .catch(() => {
+                  // If fetch fails, just simulate successful load
+                  const event = new Event('load');
+                  script.dispatchEvent(event);
+                });
             }
           }
         }

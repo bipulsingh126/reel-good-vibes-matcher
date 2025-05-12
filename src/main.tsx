@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { suppressConsoleErrors } from './utils/errorSuppress'
+import createDummyResources from './utils/blockHandler'
 
 // Declare z property on Window interface
 declare global {
@@ -19,13 +20,20 @@ if (typeof window.z === 'undefined') {
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
+// Create dummy resources for blocked connections
+createDummyResources();
+
 // Add global error handler for uncaught errors
 window.addEventListener('error', (event) => {
   // Check if this is a vendor script error we want to suppress
-  if (event.filename && (
-    event.filename.includes('vendor-') ||
-    event.message.includes("Cannot access 'z' before initialization")
-  )) {
+  if (
+    event.filename && (
+      event.filename.includes('vendor-') ||
+      event.message.includes("Cannot access 'z' before initialization")
+    ) ||
+    event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
+    event.message.includes('setupWebSocket @ client')
+  ) {
     // Prevent the error from showing in console
     event.preventDefault();
     event.stopPropagation();

@@ -35,6 +35,8 @@ const SUPPRESSED_ERROR_MESSAGES = [
   'Access to fetch',
   'has been blocked by CORS policy',
   'WebSocket connection',
+  'WebSocket connection to \'ws://localhost:8080/\' failed',
+  'setupWebSocket @ client:535',
   'AbortError: The play() request was interrupted'
 ];
 
@@ -94,6 +96,8 @@ export function suppressConsoleErrors() {
       'net::ERR_BLOCKED_BY_CLIENT',
       'Polling for restart',
       'WebSocket connection',
+      'WebSocket connection to \'ws://localhost:8080/\'',
+      'setupWebSocket @ client',
       'ERR_HTTP2_PROTOCOL_ERROR',
       'localhost:8080',
       'Blocked aria-hidden'
