@@ -72,6 +72,7 @@ ${content}`;
     } else {
       // For other vendor files, just add the z variable definition
       content = `/* Patched to fix z initialization */
+window.z = window.z || {};
 (function(){
   // Ensure z exists before the module runs
   if (typeof window.z === 'undefined') {
