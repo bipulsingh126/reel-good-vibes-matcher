@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Critical: Define z variable before any scripts load -->
+    <!-- CRITICAL: Define z variable inline before any scripts load -->
     <script>window.z = {};</script>
     
-    <!-- Load vendor patch script before anything else -->
+    <!-- Load z-initializer.js before any other scripts -->
+    <script src="/z-initializer.js"></script>
+    
+    <!-- Load vendor patch script -->
     <script src="/vendor-patch.js"></script>
     
     <meta charset="UTF-8" />
