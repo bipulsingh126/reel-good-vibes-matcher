@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Load fix-vendor.js script before anything else -->
+    <script src="/fix-vendor.js"></script>
+    
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ws: wss: http://localhost:* https://*.lovable.dev https://*.lovableproject.com https://*.lovable.app https://*.gpteng.co https://*.cloudflareinsights.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.cloudflareinsights.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:;">
@@ -21,7 +24,7 @@
     <!-- Initialize variables to prevent "access before initialization" errors -->
     <script>
       // Pre-define variables that might be accessed before initialization
-      window.z = null;
+      window.z = window.z || {};
       window.__VENDOR_FIX__ = true;
       
       // Block certain third-party requests that cause ERR_BLOCKED_BY_CLIENT

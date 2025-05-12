@@ -24,6 +24,18 @@ export default defineConfig(({ mode }) => ({
     cors: true,
   },
   plugins: [
+    // Add a custom plugin to inject fix-vendor.js into the HTML
+    {
+      name: 'inject-fix-vendor',
+      transformIndexHtml(html: string) {
+        // Make sure fix-vendor.js is the first script loaded
+        return html.replace(
+          '<head>',
+          `<head>
+    <script>window.z = {};</script>`
+        );
+      }
+    },
     react({
       // Temporarily disable SWC's emotion plugin due to compatibility issues
       plugins: []
@@ -63,10 +75,18 @@ export default defineConfig(({ mode }) => ({
         drop_console: mode === 'production',
         drop_debugger: mode === 'production',
       },
+      format: {
+        // Fix variable initialization issues
+        preamble: 'window.z = window.z || {};',
+      },
     },
     // Improve chunk loading strategy
     rollupOptions: {
       output: {
+        // Ensure vendor chunks are loaded after our fix-vendor.js script
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
           // Extract specific packages into their own chunks
           if (id.includes('node_modules')) {
