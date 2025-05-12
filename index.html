@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Load fix-vendor.js script before anything else -->
-    <script src="/fix-vendor.js"></script>
+    <!-- Critical: Define z variable before any scripts load -->
+    <script>window.z = {};</script>
+    
+    <!-- Load vendor patch script before anything else -->
+    <script src="/vendor-patch.js"></script>
     
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

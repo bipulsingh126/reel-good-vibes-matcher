@@ -4,6 +4,18 @@ import App from './App.tsx'
 import './index.css'
 import { suppressConsoleErrors } from './utils/errorSuppress'
 
+// Declare z property on Window interface
+declare global {
+  interface Window {
+    z: any;
+  }
+}
+
+// Ensure z variable is defined
+if (typeof window.z === 'undefined') {
+  window.z = {};
+}
+
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
