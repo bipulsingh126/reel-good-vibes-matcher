@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -11,8 +10,9 @@ import compression from "vite-plugin-compression";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "localhost",
     port: 8080,
+    strictPort: false,
     hmr: {
       protocol: 'ws',
       host: 'localhost',
@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
       timeout: 300000,
       overlay: false,
     },
+    cors: true,
   },
   plugins: [
     react({
@@ -47,6 +48,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "react": path.resolve(__dirname, "./node_modules/react"),
+      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
     },
   },
   build: {
@@ -57,8 +60,8 @@ export default defineConfig(({ mode }) => ({
     // Configure Terser
     terserOptions: {
       compress: {
-        drop_console: true,
-        drop_debugger: true,
+        drop_console: mode === 'production',
+        drop_debugger: mode === 'production',
       },
     },
     // Improve chunk loading strategy
