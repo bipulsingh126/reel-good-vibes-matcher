@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -17,8 +18,12 @@ export default defineConfig(({ mode }) => ({
       host: 'localhost',
       port: 8080,
       clientPort: 8080,
-      timeout: 120000,
+      timeout: 300000,
+      overlay: false,
     },
+  },
+  optimizeDeps: {
+    force: true, // Force dependency pre-bundling to avoid issues
   },
   plugins: [
     react({
@@ -88,6 +93,7 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom',
       'lucide-react',
       'date-fns',
+      'sonner',
     ],
     exclude: [],
   },
