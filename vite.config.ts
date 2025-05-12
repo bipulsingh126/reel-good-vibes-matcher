@@ -22,9 +22,6 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  optimizeDeps: {
-    force: true, // Force dependency pre-bundling to avoid issues
-  },
   plugins: [
     react({
       // Temporarily disable SWC's emotion plugin due to compatibility issues
@@ -87,6 +84,7 @@ export default defineConfig(({ mode }) => ({
   },
   // Optimize deps to improve startup time
   optimizeDeps: {
+    force: true, // Force dependency pre-bundling to avoid issues
     include: [
       'react', 
       'react-dom', 
