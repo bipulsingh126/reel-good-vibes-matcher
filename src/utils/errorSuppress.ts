@@ -19,7 +19,9 @@ const SUPPRESSED_DOMAINS = [
 const SUPPRESSED_ERROR_MESSAGES = [
   'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT',
   'BloomFilter error',
-  'The resource was preloaded using link preload but not used'
+  'The resource was preloaded using link preload but not used',
+  'Uncaught ReferenceError: Cannot access',
+  'violates the following Content Security Policy directive'
 ];
 
 // Store the original console functions
