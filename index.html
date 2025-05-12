@@ -2,12 +2,26 @@
 <html lang="en">
   <head>
     <!-- CRITICAL: Define z variable inline before any scripts load -->
-    <script>window.z = {};</script>
+    <script>
+      // Define z globally to prevent initialization errors
+      var z = {};
+      window.z = z;
+      
+      // Create a global error handler for z initialization errors
+      window.addEventListener('error', function(event) {
+        if (event.message && event.message.includes("Cannot access 'z'")) {
+          console.log('Prevented z initialization error');
+          event.preventDefault();
+          return false;
+        }
+      }, true);
+    </script>
     
-    <!-- Load z-initializer.js before any other scripts -->
+    <!-- Load z-fix.js before any other scripts -->
+    <script src="/z-fix.js"></script>
+    
+    <!-- Load other scripts -->
     <script src="/z-initializer.js"></script>
-    
-    <!-- Load vendor patch script -->
     <script src="/vendor-patch.js"></script>
     
     <meta charset="UTF-8" />

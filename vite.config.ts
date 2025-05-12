@@ -77,7 +77,7 @@ export default defineConfig(({ mode }) => ({
       },
       format: {
         // Fix variable initialization issues
-        preamble: 'window.z = window.z || {};',
+        preamble: 'var z = {}; window.z = z;',
       },
     },
     // Improve chunk loading strategy
