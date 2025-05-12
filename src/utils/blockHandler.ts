@@ -1,9 +1,15 @@
+
 /**
  * Utility to handle blocked resources and suppress related errors
  */
 
 // Create dummy resources to replace blocked ones
 export function createDummyResources() {
+  // Ensure z is defined
+  if (typeof window.z === 'undefined') {
+    window.z = {};
+  }
+  
   // Create a dummy WebSocket class to replace blocked WebSocket connections
   const OriginalWebSocket = window.WebSocket;
   window.WebSocket = function(url: string, protocols?: string | string[]) {
@@ -83,6 +89,16 @@ export function createDummyResources() {
                 mutation.target.removeChild(script);
               }
             }
+            
+            // Special handling for vendor scripts
+            if (script.src && script.src.includes('vendor-')) {
+              // Add z definition before vendor script loads
+              const zDefScript = document.createElement('script');
+              zDefScript.textContent = 'window.z = window.z || {};';
+              if (script.parentNode) {
+                script.parentNode.insertBefore(zDefScript, script);
+              }
+            }
           }
         }
       }
@@ -94,6 +110,21 @@ export function createDummyResources() {
     childList: true,
     subtree: true
   });
+  
+  // Add event listener for vendor script errors
+  window.addEventListener('error', function(event) {
+    if (event.message && event.message.includes("Cannot access 'z'") && 
+        event.filename && event.filename.includes('vendor-')) {
+      console.log('Prevented vendor script z error in blockHandler');
+      // Ensure z is defined
+      if (typeof window.z === 'undefined') {
+        window.z = {};
+      }
+      // Prevent default action
+      event.preventDefault();
+      return false;
+    }
+  }, true);
 }
 
 // Export the dummy resource creation function

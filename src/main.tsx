@@ -1,31 +1,48 @@
+
 import React, { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { suppressConsoleErrors } from './utils/errorSuppress'
+import createDummyResources from './utils/blockHandler'
 
 // Declare z property on Window interface
 declare global {
   interface Window {
     z: any;
+    __zInitialized?: boolean;
+    __zFixed?: boolean;
+    __VENDOR_FIX__?: boolean;
   }
 }
 
-// Ensure z variable is defined
-if (typeof window.z === 'undefined') {
-  window.z = {};
-}
+// Ensure z variable is defined before anything else runs
+(function() {
+  if (typeof window.z === 'undefined') {
+    window.z = {};
+  }
+})();
 
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
+// Create dummy resources to handle blocked resources
+createDummyResources();
+
 // Add global error handler for uncaught errors
 window.addEventListener('error', (event) => {
-  // Check if this is a vendor script error we want to suppress
-  if (event.filename && (
-    event.filename.includes('vendor-') ||
-    event.message.includes("Cannot access 'z' before initialization")
+  // Check if this is a vendor script z error we want to suppress
+  if (event.message && (
+    event.message.includes("Cannot access 'z' before initialization") ||
+    (event.filename && event.filename.includes('vendor-'))
   )) {
+    console.log('Prevented z error in main.tsx:', event.message);
+    
+    // Ensure z is defined after catching the error
+    if (typeof window.z === 'undefined') {
+      window.z = {};
+    }
+    
     // Prevent the error from showing in console
     event.preventDefault();
     event.stopPropagation();

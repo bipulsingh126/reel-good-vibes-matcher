@@ -1,12 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- CRITICAL: Define z variable inline before any scripts load -->
+    <!-- CRITICAL: Define z variable directly inline as the very first thing -->
     <script>
-      // Only define z if it doesn't exist yet
-      if (typeof window.z === 'undefined') {
-        window.z = {};
-      }
+      // Initialize z immediately before any other script executes
+      window.z = window.z || {};
+      window.__zInitialized = true;
+    </script>
+    
+    <!-- Stronger safeguard against z initialization issues -->
+    <script>
+      // Create a protective wrapper for z
+      (function() {
+        // Keep a reference to our z object
+        var _z = window.z;
+        
+        // Create getters/setters to prevent z being overwritten
+        try {
+          Object.defineProperty(window, 'z', {
+            configurable: true,
+            enumerable: true,
+            get: function() { return _z; },
+            set: function(val) {
+              if (val && typeof val === 'object') {
+                Object.assign(_z, val);
+              }
+              return _z;
+            }
+          });
+        } catch(e) {
+          console.error('z protection setup failed', e);
+        }
+      })();
     </script>
     
     <!-- Load z-fix.js before any other scripts -->
@@ -36,7 +61,7 @@
     
     <!-- Initialize variables to prevent "access before initialization" errors -->
     <script>
-      // Use a safer approach to define z
+      // Use a safer approach to define z again in case it was somehow reset
       if (typeof window.z === 'undefined') {
         window.z = {};
       }
