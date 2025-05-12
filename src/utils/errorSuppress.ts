@@ -9,7 +9,6 @@ const SUPPRESSED_DOMAINS = [
   'ingesteer.services-prod.nsvcs.net',
   'analytics.tiktok.com',
   'connect.facebook.net',
-  'facebook.com/tr',
   'cloudflareinsights.com',
   'lovable-api.com',
   'firestore.googleapis.com',
@@ -18,9 +17,7 @@ const SUPPRESSED_DOMAINS = [
   'localhost:8080',
   'recorder.js',
   'content-all.js',
-  'all-frames.js',
-  'firebase',
-  'f7c28dad-7381-4ae7-a718-86da73f3ba98'
+  'all-frames.js'
 ];
 
 // List of error messages to suppress
@@ -38,13 +35,7 @@ const SUPPRESSED_ERROR_MESSAGES = [
   'Access to fetch',
   'has been blocked by CORS policy',
   'WebSocket connection',
-  'WebSocket connection to \'ws://localhost:8080/\' failed',
-  'setupWebSocket @ client:535',
-  'AbortError: The play() request was interrupted',
-  'preloaded using link preload but not used within a few seconds',
-  'Unrecognized feature:',
-  '@firebase/firestore: Firestore',
-  'BloomFilterError'
+  'AbortError: The play() request was interrupted'
 ];
 
 // Store the original console functions
@@ -71,14 +62,8 @@ export function suppressConsoleErrors() {
       errorString.includes(message)
     );
 
-    // Check for specific script patterns that indicate bundled scripts
-    const hasScriptPattern = /\d+-[a-f0-9]+\.js/.test(errorString) || 
-                           errorString.includes('fd9d1056-') || 
-                           errorString.includes('layout-') ||
-                           (errorString.includes('ol @') && errorString.includes('or @'));
-
     // If it's not a suppressed error, log it
-    if (!hasSuppressedDomain && !hasSuppressedErrorMessage && !hasScriptPattern) {
+    if (!hasSuppressedDomain && !hasSuppressedErrorMessage) {
       originalConsoleError.apply(console, arguments);
     }
   };
@@ -87,19 +72,14 @@ export function suppressConsoleErrors() {
   console.warn = function() {
     // Check if warning message contains any of the suppressed domains
     const warnString = Array.from(arguments).join(' ');
-    
     const shouldSuppress = SUPPRESSED_DOMAINS.some(domain => 
       warnString.includes(domain)
     ) || SUPPRESSED_ERROR_MESSAGES.some(message =>
       warnString.includes(message)
-    ) || /\d+-[a-f0-9]+\.js/.test(warnString) || 
-       warnString.includes('fd9d1056-') || 
-       warnString.includes('layout-') ||
-       (warnString.includes('ol @') && warnString.includes('or @')) ||
-       warnString.includes('Content Security Policy');
+    );
 
-    // If it's not a suppressed warning, log it
-    if (!shouldSuppress) {
+    // If it's not a suppressed domain, log the warning
+    if (!shouldSuppress && !warnString.includes('Content Security Policy')) {
       originalConsoleWarn.apply(console, arguments);
     }
   };
@@ -114,23 +94,13 @@ export function suppressConsoleErrors() {
       'net::ERR_BLOCKED_BY_CLIENT',
       'Polling for restart',
       'WebSocket connection',
-      'WebSocket connection to \'ws://localhost:8080/\'',
-      'setupWebSocket @ client',
       'ERR_HTTP2_PROTOCOL_ERROR',
       'localhost:8080',
-      'Blocked aria-hidden',
-      'preloaded using link preload',
-      'Unrecognized feature:',
-      'BloomFilter',
-      '@firebase/firestore'
+      'Blocked aria-hidden'
     ];
     
     // If the log matches any of our suppress patterns, don't log it
-    if (suppressLogPatterns.some(pattern => logMessage.includes(pattern)) ||
-        /\d+-[a-f0-9]+\.js/.test(logMessage) ||
-        logMessage.includes('fd9d1056-') ||
-        logMessage.includes('layout-') ||
-        (logMessage.includes('ol @') && logMessage.includes('or @'))) {
+    if (suppressLogPatterns.some(pattern => logMessage.includes(pattern))) {
       return;
     }
     
@@ -192,44 +162,6 @@ export function suppressConsoleErrors() {
       return false;
     }
   }, true);
-
-  // Handle preloaded resource warnings
-  window.addEventListener('load', function() {
-    // Find all preloaded links
-    const preloadedLinks = document.querySelectorAll('link[rel="preload"]');
-    
-    // For each preloaded link, create a hidden element to "use" it
-    preloadedLinks.forEach(link => {
-      const href = link.getAttribute('href');
-      if (!href) return;
-      
-      // Get the "as" attribute to determine what type of resource it is
-      const asType = link.getAttribute('as') || '';
-      
-      // Create an element to use the preloaded resource
-      if (asType === 'style') {
-        // Create a style element
-        const style = document.createElement('link');
-        style.rel = 'stylesheet';
-        style.href = href;
-        style.style.display = 'none';
-        document.head.appendChild(style);
-      } else if (asType === 'script') {
-        // Create a script element
-        const script = document.createElement('script');
-        script.src = href;
-        script.async = true;
-        script.style.display = 'none';
-        document.head.appendChild(script);
-      } else if (asType === 'image') {
-        // Create an image element
-        const img = new Image();
-        img.src = href;
-        img.style.display = 'none';
-        document.body.appendChild(img);
-      }
-    });
-  });
 }
 
 /**

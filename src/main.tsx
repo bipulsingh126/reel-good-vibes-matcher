@@ -1,3 +1,4 @@
+
 import React, { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -12,7 +13,6 @@ declare global {
     __zInitialized?: boolean;
     __zFixed?: boolean;
     __VENDOR_FIX__?: boolean;
-    __ERROR_REPORTER__?: any;
   }
 }
 
@@ -30,66 +30,32 @@ declare global {
   }
 })();
 
-// Initialize script blocker with session storage
-function initScriptBlocker() {
-  try {
-    // Get the current list of blocked scripts
-    const storedScripts = sessionStorage.getItem('BLOCKED_SCRIPTS');
-    if (storedScripts) {
-      console.log('Using stored blocked scripts configuration');
-    }
-    
-    // Listen for storage changes to update the blocker
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'BLOCKED_SCRIPTS' && event.newValue) {
-        console.log('Script blocker configuration updated');
-      }
-    });
-  } catch (err) {
-    console.warn('Failed to initialize script blocker with session storage:', err);
-  }
-}
-
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
-// Create dummy resources for blocked connections
+// Create dummy resources to handle blocked resources
 createDummyResources();
-
-// Initialize script blocker
-initScriptBlocker();
-
-// Handle Permissions-Policy errors
-const originalReload = window.location.reload;
-window.location.reload = function(...args) {
-  // Check the stack trace for Permissions-Policy related errors
-  const stackTrace = new Error().stack || '';
-  if (stackTrace.includes('Unrecognized feature') || 
-      stackTrace.includes('Permissions-Policy') ||
-      stackTrace.includes('fd9d1056-') ||
-      stackTrace.includes('f7c28dad-') ||
-      stackTrace.includes('6967-3be585539776f3cb.js')) {
-    // Prevent the reload
-    console.log('Prevented automatic reload from Permissions-Policy error');
-    return undefined as any;
-  }
-  return originalReload.apply(this, args);
-} as any;
 
 // Add global error handler for uncaught errors
 window.addEventListener('error', (event) => {
-  // Check if this is a vendor script error we want to suppress
-  if (
-    event.filename && (
-      event.filename.includes('vendor-') ||
-      event.filename.includes('f7c28dad-') ||
-      event.message.includes("Cannot access 'z' before initialization")
-    ) ||
-    event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
-    event.message.includes('setupWebSocket @ client') ||
-    event.message.includes('Unrecognized feature:') ||
-    event.message.includes('preloaded using link preload')
-  ) {
+  // Check if this is a vendor script z error we want to suppress
+  if (event.message && (
+    event.message.includes("Cannot access 'z' before initialization") ||
+    (event.filename && event.filename.includes('vendor-'))
+  )) {
+    console.log('Prevented z error in main.tsx:', event.message);
+    
+    // Ensure z is defined after catching the error
+    if (typeof window.z === 'undefined') {
+      Object.defineProperty(window, 'z', {
+        value: {},
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+      window.__zInitialized = true;
+    }
+    
     // Prevent the error from showing in console
     event.preventDefault();
     event.stopPropagation();
