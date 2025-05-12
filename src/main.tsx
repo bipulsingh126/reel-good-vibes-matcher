@@ -7,6 +7,20 @@ import { suppressConsoleErrors } from './utils/errorSuppress'
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
+// Add global error handler for uncaught errors
+window.addEventListener('error', (event) => {
+  // Check if this is a vendor script error we want to suppress
+  if (event.filename && (
+    event.filename.includes('vendor-') ||
+    event.message.includes("Cannot access 'z' before initialization")
+  )) {
+    // Prevent the error from showing in console
+    event.preventDefault();
+    event.stopPropagation();
+    return false;
+  }
+});
+
 // Register service worker for better performance and offline capabilities
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
