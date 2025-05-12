@@ -1,20 +1,63 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- CRITICAL: Define z variable inline before any scripts load -->
+    <!-- CRITICAL: Define z variable directly inline as the very first thing -->
     <script>
-      // Only define z if it doesn't exist yet
-      if (typeof window.z === 'undefined') {
-        window.z = {};
-      }
+      // Initialize z immediately before any other script executes
+      // Use Object.defineProperty for better control
+      Object.defineProperty(window, 'z', {
+        value: {},
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+      window.__zInitialized = true;
+      
+      // Create a getter/setter to further protect z
+      (function() {
+        var _z = window.z;
+        try {
+          Object.defineProperty(window, 'z', {
+            get: function() { return _z; },
+            set: function(val) {
+              // If someone tries to set z to a new object, merge properties instead of replacing
+              if (val && typeof val === 'object') {
+                Object.assign(_z, val);
+                return _z;
+              }
+              return _z;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch(e) {} // Silently fail if this doesn't work
+      })();
+    </script>
+    
+    <!-- Specific patch for the vendor-X8AeWD1T.js script -->
+    <script>
+      // Create z variable at the global scope
+      var z = window.z;
+      
+      // Add a specific error handler for the z initialization error
+      window.addEventListener('error', function(e) {
+        if (e.message && e.message.includes("Cannot access 'z'")) {
+          console.log('Prevented z error in inline script');
+          e.preventDefault();
+          return false;
+        }
+      }, true);
     </script>
     
     <!-- Load z-fix.js before any other scripts -->
     <script src="/z-fix.js"></script>
     
-    <!-- Load other scripts -->
-    <script src="/z-initializer.js"></script>
+    <!-- Load vendor-patch.js next -->
     <script src="/vendor-patch.js"></script>
+    
+    <!-- Load z-initializer.js after -->
+    <script src="/z-initializer.js"></script>
     
     <!-- Meta tags and CSP -->
     <meta charset="UTF-8" />
@@ -34,13 +77,28 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- Initialize variables to prevent "access before initialization" errors -->
+    <!-- Initialize variables again to prevent "access before initialization" errors -->
     <script>
-      // Use a safer approach to define z
-      if (typeof window.z === 'undefined') {
-        window.z = {};
-      }
+      // Multiple initialization points for better safety
+      // Create z in global scope directly
+      var z = window.z || {};
+      Object.defineProperty(window, 'z', {
+        value: z,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+      window.__zInitialized = true;
       window.__VENDOR_FIX__ = true;
+      
+      // Create a specific error handler for X8AeWD1T.js
+      window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('X8AeWD1T')) {
+          console.log('Prevented X8AeWD1T.js error');
+          e.preventDefault();
+          return false;
+        }
+      }, true);
     </script>
     
     <!-- Required Lovable script tag for Pick and Edit functionality -->

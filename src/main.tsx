@@ -1,3 +1,4 @@
+
 import React, { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -9,31 +10,36 @@ import createDummyResources from './utils/blockHandler'
 declare global {
   interface Window {
     z: any;
+    __zInitialized?: boolean;
+    __zFixed?: boolean;
+    __VENDOR_FIX__?: boolean;
   }
 }
 
-// Ensure z variable is defined
-if (typeof window.z === 'undefined') {
-  window.z = {};
-}
+// Ensure z variable is defined before anything else runs
+(function() {
+  if (typeof window.z === 'undefined') {
+    // Use Object.defineProperty for better control over the property
+    Object.defineProperty(window, 'z', {
+      value: {},
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+    window.__zInitialized = true;
+  }
+})();
 
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
-// Create dummy resources for blocked connections
-createDummyResources();
-
 // Add global error handler for uncaught errors
 window.addEventListener('error', (event) => {
   // Check if this is a vendor script error we want to suppress
-  if (
-    event.filename && (
-      event.filename.includes('vendor-') ||
-      event.message.includes("Cannot access 'z' before initialization")
-    ) ||
-    event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
-    event.message.includes('setupWebSocket @ client')
-  ) {
+  if (event.filename && (
+    event.filename.includes('vendor-') ||
+    event.message.includes("Cannot access 'z' before initialization")
+  )) {
     // Prevent the error from showing in console
     event.preventDefault();
     event.stopPropagation();
