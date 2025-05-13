@@ -3,6 +3,63 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useSafeRef } from "@/utils/refs"
+
+// Prevent recursive toString calls
+const safeguardComponentFunction = (obj: any) => {
+  if (!obj) return;
+  
+  try {
+    // Override toString to avoid recursion
+    const originalToString = obj.toString;
+    
+    if (typeof originalToString === 'function') {
+      Object.defineProperty(obj, 'toString', {
+        value: function() { return '[Component]'; },
+        writable: false,
+        configurable: true
+      });
+    }
+    
+    // Also patch valueOf for additional safety
+    if (typeof obj.valueOf === 'function') {
+      Object.defineProperty(obj, 'valueOf', {
+        value: function() { return obj; },
+        writable: false,
+        configurable: true
+      });
+    }
+  } catch (e) {
+    // Silently handle errors to prevent breaking the component
+  }
+};
+
+// Safe ref processing with recursion protection
+const useRecursionSafeRef = <T,>(ref: React.Ref<T>) => {
+  const localRef = React.useRef<T>(null);
+  
+  React.useEffect(() => {
+    // Skip if ref is null or undefined
+    if (!ref) return;
+    
+    try {
+      // Apply safeguard to the local ref element if it's a DOM element
+      if (localRef.current) {
+        safeguardComponentFunction(localRef.current);
+      }
+      
+      if (typeof ref === 'function') {
+        ref(localRef.current);
+      } else if (ref && typeof ref === 'object' && 'current' in ref) {
+        (ref as React.MutableRefObject<T>).current = localRef.current;
+      }
+    } catch (error) {
+      console.warn('Safe ref assignment failed:', error);
+    }
+  }, [ref]);
+  
+  return localRef;
+};
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 
@@ -41,35 +98,69 @@ DropdownMenuSubTrigger.displayName =
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  // Use recursion-safe ref
+  const safeRef = useRecursionSafeRef<React.ElementRef<typeof DropdownMenuPrimitive.SubContent>>(ref);
+  
+  return (
+    <DropdownMenuPrimitive.SubContent
+      ref={safeRef}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
+>(({ className, sideOffset = 4, ...props }, ref) => {
+  // Use recursion-safe ref
+  const safeRef = useRecursionSafeRef<React.ElementRef<typeof DropdownMenuPrimitive.Content>>(ref);
+  
+  // Apply runtime protection to newly created elements
+  React.useLayoutEffect(() => {
+    if (safeRef.current) {
+      try {
+        // Apply stronger recursion protection
+        safeguardComponentFunction(safeRef.current);
+        
+        // Also protect any children elements
+        const children = safeRef.current.querySelectorAll('*');
+        children.forEach(child => safeguardComponentFunction(child));
+      } catch (error) {
+        console.warn('Failed to patch dropdown element:', error);
+      }
+    }
+  }, []);
+  
+  // Add error boundary to prevent crashes
+  return (
+    <React.Fragment>
+      {React.createElement(
+        DropdownMenuPrimitive.Portal,
+        null,
+        React.createElement(
+          DropdownMenuPrimitive.Content,
+          {
+            ref: safeRef,
+            sideOffset: sideOffset,
+            className: cn(
+              "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+              className
+            ),
+            ...props
+          }
+        )
       )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
-))
+    </React.Fragment>
+  );
+})
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
 const DropdownMenuItem = React.forwardRef<

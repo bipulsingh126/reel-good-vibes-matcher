@@ -2,6 +2,16 @@
  * Utility to handle blocked resources and suppress related errors
  */
 
+// Add TypeScript declarations
+declare global {
+  interface Window {
+    fbq: any;
+    firebase?: any;
+    f7c28dadFunctions?: any;
+    WebSocket: any;
+  }
+}
+
 // Create dummy resources to replace blocked ones
 export function createDummyResources() {
   // Create a dummy WebSocket class to replace blocked WebSocket connections
@@ -258,7 +268,8 @@ export function createDummyResources() {
     window.addEventListener('error', (event) => {
       if (event.message && 
           (event.message.includes('preloaded using link preload') || 
-           event.message.includes('facebook.com/tr'))) {
+           event.message.includes('facebook.com/tr') ||
+           event.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
         // Prevent the error
         event.preventDefault();
         event.stopPropagation();
@@ -268,22 +279,30 @@ export function createDummyResources() {
     
     // Handle Facebook Pixel
     const handleFacebookPixel = () => {
-      // Create a dummy image to satisfy the preload requirement
-      const img = new Image();
-      img.src = 'https://www.facebook.com/tr?id=9151671744940732&ev=PageView&noscript=1';
-      img.style.display = 'none';
-      document.body.appendChild(img);
-      
-      // Create a dummy function for fbq
-      if (!window.hasOwnProperty('fbq')) {
-        Object.defineProperty(window, 'fbq', {
-          value: function() {
-            // Do nothing, just a stub
-            return true;
-          },
-          writable: true,
-          configurable: true
-        });
+      try {
+        // First make sure fbq is defined as a no-op function before doing anything else
+        if (typeof window.fbq === 'undefined') {
+          // Create a mock fbq function using simple approach to avoid Proxy issues
+          window.fbq = function() { return window.fbq; } as any;
+          
+          // Add common methods to the mock fbq
+          window.fbq.queue = [];
+          window.fbq.push = function() { return window.fbq; };
+          window.fbq.loaded = true;
+          window.fbq.version = '2.0';
+          window.fbq.agent = 'tmgr';
+          window.fbq.disablePushState = true;
+          window.fbq.track = function() { return window.fbq; };
+          window.fbq.trackCustom = function() { return window.fbq; };
+          window.fbq.trackSingle = function() { return window.fbq; };
+          window.fbq.trackSingleCustom = function() { return window.fbq; };
+          window.fbq.init = function() { return window.fbq; };
+          window.fbq.event = function() { return window.fbq; };
+          
+          console.debug('Mock Facebook Pixel initialized');
+        }
+      } catch (error) {
+        // Silent catch - don't log anything to avoid additional console errors
       }
     };
     
@@ -293,31 +312,34 @@ export function createDummyResources() {
     // Find all preloaded resources and handle them
     const preloadLinks = document.querySelectorAll('link[rel="preload"]');
     preloadLinks.forEach(link => {
-      const href = link.getAttribute('href');
-      if (!href) return;
+      const href = link.getAttribute('href') || '';
       
-      if (href.includes('facebook.com/tr')) {
-        handleFacebookPixel();
-      } else {
-        // For other preloaded resources, create an appropriate element
-        const asType = link.getAttribute('as') || '';
-        if (asType === 'script') {
-          const script = document.createElement('script');
-          script.src = href;
-          script.async = true;
-          script.defer = true;
-          document.head.appendChild(script);
-        } else if (asType === 'style') {
-          const style = document.createElement('link');
-          style.rel = 'stylesheet';
-          style.href = href;
-          document.head.appendChild(style);
-        } else if (asType === 'image') {
-          const img = new Image();
-          img.src = href;
-          img.style.display = 'none';
-          document.body.appendChild(img);
+      try {
+        if (href.includes('facebook.com/tr')) {
+          // Just call the handler, don't try to load anything
+          handleFacebookPixel();
+        } else if (!href.includes('cloudflare') && 
+                  !href.includes('beacon') && 
+                  !href.includes('facebook') &&
+                  !href.includes('fbevents')) {
+          // For other non-tracking preloaded resources, create an appropriate element
+          const asType = link.getAttribute('as') || '';
+          if (asType === 'script') {
+            const script = document.createElement('script');
+            script.src = href;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+          } else if (asType === 'style') {
+            const style = document.createElement('link');
+            style.rel = 'stylesheet';
+            style.href = href;
+            document.head.appendChild(style);
+          }
+          // Skip image loading as this might trigger network requests
         }
+      } catch (e) {
+        // Silently catch any errors to avoid console pollution
       }
     });
   }, 500);

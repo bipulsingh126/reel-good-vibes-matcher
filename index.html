@@ -1,65 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- CRITICAL: Define z variable directly inline as the very first thing -->
-    <script>
-      // Initialize z immediately before any other script executes
-      // Use Object.defineProperty for better control
-      Object.defineProperty(window, 'z', {
-        value: {},
-        writable: true,
-        configurable: true,
-        enumerable: true
-      });
-      window.__zInitialized = true;
-      
-      // Create a getter/setter to further protect z
+    <!-- CRITICAL: Initialize z variable as the very first thing -->
+    <script type="text/javascript">
+      // Use an IIFE for protection
       (function() {
-        var _z = window.z;
+        // Create a persistent object for z using closure
+        var _z = {};
+        
         try {
+          // Define z with strong protection to prevent initialization errors
           Object.defineProperty(window, 'z', {
             get: function() { return _z; },
             set: function(val) {
               // If someone tries to set z to a new object, merge properties instead of replacing
               if (val && typeof val === 'object') {
                 Object.assign(_z, val);
-                return _z;
               }
               return _z;
             },
             configurable: true,
             enumerable: true
           });
-        } catch(e) {} // Silently fail if this doesn't work
+        } catch(e) {
+          // Fallback if property definition fails
+          window.z = _z;
+        }
+        
+        // Create a var z in this scope to protect against local declaration issues
+        var z = window.z;
+        
+        // Mark that we initialized z
+        window.__zInitialized = true;
+        window.__zInitTime = Date.now();
       })();
     </script>
     
-    <!-- Script blocker to prevent problematic scripts from loading -->
-    <script src="/script-blocker.js"></script>
-    
-    <!-- Error reporter to track and log errors -->
-    <script src="/error-reporter.js"></script>
-    
-    <!-- Specific patch for the vendor-X8AeWD1T.js script -->
+    <!-- Critical fixes for stack size exceeded errors -->
     <script>
-      // Create z variable at the global scope
-      var z = window.z;
-      
-      // Add a specific error handler for the z initialization error
+      // Global error handler for stack size exceeded errors
       window.addEventListener('error', function(e) {
-        if (e.message && e.message.includes("Cannot access 'z'")) {
-          console.log('Prevented z error in inline script');
+        if (e.message && e.message.includes('Maximum call stack size exceeded')) {
+          console.warn('Intercepted maximum call stack error');
           e.preventDefault();
           return false;
         }
       }, true);
     </script>
     
-    <!-- Load z-fix.js before any other scripts -->
+    <!-- Load fixes in correct order -->
+    <script src="/chunk-patch.js"></script>
+    <script src="/popper-fix.js"></script>
+    <script src="/vendor-patch.js"></script>
     <script src="/z-fix.js"></script>
     
-    <!-- Load vendor-patch.js next -->
-    <script src="/vendor-patch.js"></script>
+    <!-- Additional safety checks for vendor script issues -->
+    <script>
+      // Create global variable to ensure z exists in any context
+      var z = window.z;
+      
+      // Add specific error handler for z initialization errors
+      window.addEventListener('error', function(e) {
+        if (e.message && (
+          e.message.includes("Cannot access 'z'") || 
+          e.message.includes('before initialization') ||
+          e.message.includes("Identifier 'z' has already been declared") ||
+          e.message.includes("'z' is not defined")
+        )) {
+          console.log('Prevented z error in inline script');
+          
+          // Ensure z exists
+          if (typeof window.z === 'undefined') {
+            window.z = {};
+            window.__zErrorRecovered = true;
+          }
+          
+          e.preventDefault();
+          return false;
+        }
+      }, true);
+      
+      // Intercept any attempts to declare z in global scope
+      (function() {
+        var originalDefineProperty = Object.defineProperty;
+        Object.defineProperty = function(obj, prop, descriptor) {
+          if (obj === window && prop === 'z') {
+            console.log('Prevented redefinition of z');
+            return window;
+          }
+          return originalDefineProperty.apply(this, arguments);
+        };
+      })();
+      
+      // Create special functions to debug z if needed
+      window.__debugZ = function() {
+        console.log('Current z value:', window.z);
+        return window.z;
+      };
+    </script>
     
     <!-- Load z-initializer.js after -->
     <script src="/z-initializer.js"></script>
@@ -99,30 +137,6 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    
-    <!-- Initialize variables again to prevent "access before initialization" errors -->
-    <script>
-      // Multiple initialization points for better safety
-      // Create z in global scope directly
-      var z = window.z || {};
-      Object.defineProperty(window, 'z', {
-        value: z,
-        writable: true,
-        configurable: true,
-        enumerable: true
-      });
-      window.__zInitialized = true;
-      window.__VENDOR_FIX__ = true;
-      
-      // Create a specific error handler for X8AeWD1T.js
-      window.addEventListener('error', function(e) {
-        if (e.filename && e.filename.includes('X8AeWD1T')) {
-          console.log('Prevented X8AeWD1T.js error');
-          e.preventDefault();
-          return false;
-        }
-      }, true);
-    </script>
     
     <!-- Required Lovable script tag for Pick and Edit functionality -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>

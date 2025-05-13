@@ -1,38 +1,53 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/auth/AuthContext";
 import Header from "../components/Header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { CalendarDays, LogOut, Mail, User } from "lucide-react";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
 
 const Profile = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isLoading) {
       navigate("/login");
+    } else {
+      setIsLoading(false);
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isLoading]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  if (!user) {
-    return null;
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 pt-32 pb-16">
+          <p>Loading profile...</p>
+        </div>
+      </div>
+    );
   }
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "PPP");
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }).format(date);
     } catch (error) {
+      console.error("Date formatting error:", error);
       return "Unknown date";
     }
   };
@@ -55,12 +70,12 @@ const Profile = () => {
                 <CardHeader className="flex flex-col items-center">
                   <Avatar className="h-24 w-24 mb-4">
                     <AvatarFallback className="text-2xl bg-primary/10">
-                      {user.name.charAt(0)}
+                      {user.name ? user.name.charAt(0) : 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <CardTitle className="text-2xl">{user.name}</CardTitle>
+                  <CardTitle className="text-2xl">{user.name || "User"}</CardTitle>
                   <CardDescription className="flex items-center">
-                    <Mail className="h-4 w-4 mr-1" /> {user.email}
+                    <Mail className="h-4 w-4 mr-1" /> {user.email || "No email"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -71,7 +86,7 @@ const Profile = () => {
                     </div>
                     <div className="flex items-center">
                       <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="text-sm">Joined {formatDate(user.createdAt)}</span>
+                      <span className="text-sm">Joined {user.createdAt ? formatDate(user.createdAt) : "Recently"}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -101,11 +116,11 @@ const Profile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Name</label>
-                        <p className="text-base">{user.name}</p>
+                        <p className="text-base">{user.name || "Not set"}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Email</label>
-                        <p className="text-base">{user.email}</p>
+                        <p className="text-base">{user.email || "Not set"}</p>
                       </div>
                     </div>
                   </div>
@@ -115,7 +130,7 @@ const Profile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Member Since</label>
-                        <p className="text-base">{formatDate(user.createdAt)}</p>
+                        <p className="text-base">{user.createdAt ? formatDate(user.createdAt) : "Unknown"}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Account Status</label>

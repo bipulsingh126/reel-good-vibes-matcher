@@ -24,15 +24,35 @@ export default defineConfig(({ mode }) => ({
     cors: true,
   },
   plugins: [
-    // Add a custom plugin to inject fix-vendor.js into the HTML
+    // Add a custom plugin to inject z variable initialization into the HTML
     {
-      name: 'inject-fix-vendor',
+      name: 'inject-z-initializer',
       transformIndexHtml(html: string) {
-        // Make sure fix-vendor.js is the first script loaded
+        // Make sure z variable is defined as the very first thing in the head
         return html.replace(
           '<head>',
           `<head>
-    <script>window.z = {};</script>`
+    <!-- CRITICAL: Define z variable with Object.defineProperty for better protection -->
+    <script>
+      (function() {
+        // Initialize z immediately before any other script executes
+        var _z = {};
+        Object.defineProperty(window, 'z', {
+          get: function() { return _z; },
+          set: function(val) {
+            // If someone tries to set z to a new object, merge properties
+            if (val && typeof val === 'object') {
+              Object.assign(_z, val);
+            }
+            return _z;
+          },
+          configurable: true,
+          enumerable: true
+        });
+        window.__zInitialized = true;
+        console.log('z variable initialized at page load');
+      })();
+    </script>`
         );
       }
     },
@@ -76,8 +96,25 @@ export default defineConfig(({ mode }) => ({
         drop_debugger: mode === 'production',
       },
       format: {
-        // Fix variable initialization issues with a safer approach
-        preamble: '(function(){if(typeof window.z==="undefined")window.z={};})()',
+        // Improved preamble for z initialization in all JS files
+        preamble: `(function(){
+  // Ensure z exists and is properly initialized
+  if (typeof window.z === 'undefined') {
+    var _z = {};
+    Object.defineProperty(window, 'z', {
+      get: function() { return _z; },
+      set: function(val) {
+        if (val && typeof val === 'object') {
+          Object.assign(_z, val);
+        }
+        return _z;
+      },
+      configurable: true,
+      enumerable: true
+    });
+    window.__zInitialized = true;
+  }
+})();`,
       },
     },
     // Improve chunk loading strategy
