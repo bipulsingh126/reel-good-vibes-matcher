@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react'
+import React, { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -66,7 +66,6 @@ declare global {
     __zInitialized?: boolean;
     __zFixed?: boolean;
     __VENDOR_FIX__?: boolean;
-    __ERROR_REPORTER__?: any;
   }
 }
 
@@ -84,109 +83,45 @@ declare global {
   }
 })();
 
-// Initialize script blocker with session storage
-function initScriptBlocker() {
-  try {
-    // Get the current list of blocked scripts
-    const storedScripts = sessionStorage.getItem('BLOCKED_SCRIPTS');
-    if (storedScripts) {
-      console.log('Using stored blocked scripts configuration');
-    }
-    
-    // Listen for storage changes to update the blocker
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'BLOCKED_SCRIPTS' && event.newValue) {
-        console.log('Script blocker configuration updated');
-      }
-    });
-  } catch (err) {
-    console.warn('Failed to initialize script blocker with session storage:', err);
-  }
-}
-
 // Suppress specific console errors from browser extensions
 suppressConsoleErrors();
 
-// Create dummy resources for blocked connections
+// Create dummy resources to handle blocked resources
 createDummyResources();
 
 // Initialize script blocker
 initScriptBlocker();
 
-// Fix for Maximum call stack size exceeded in Function.toString
-(function patchRecursiveStringification() {
-  // Track objects being stringified to prevent recursion
-  const objectsInProcess = new WeakSet();
-  
-  // Create a safety wrapper for JSON.stringify
-  const originalJSONStringify = JSON.stringify;
-  JSON.stringify = function(value, replacer, space) {
-    // Create a replacer function that detects recursion
-    const recursionSafeReplacer = (key, val) => {
-      if (val && typeof val === 'object') {
-        if (objectsInProcess.has(val)) {
-          return '[Circular]';
-        }
-        objectsInProcess.add(val);
-      }
-      
-      // Use the original replacer if provided
-      if (typeof replacer === 'function') {
-        val = replacer(key, val);
-      } else if (Array.isArray(replacer) && key !== '' && replacer.indexOf(key) === -1) {
-        return undefined;
-      }
-      
-      return val;
-    };
-    
-    try {
-      return originalJSONStringify(value, recursionSafeReplacer, space);
-    } finally {
-      // Clear the tracked objects
-      if (value && typeof value === 'object') {
-        objectsInProcess.delete(value);
-      }
-    }
-  };
-})();
-
-// Handle Permissions-Policy errors using a safer approach with beforeunload event
-window.addEventListener('beforeunload', (event) => {
-  // Check if the reload is triggered by a Permissions-Policy error
-  const error = new Error();
-  const stackTrace = error.stack || '';
-  
+// Handle Permissions-Policy errors
+const originalReload = window.location.reload;
+window.location.reload = function(...args) {
+  // Check the stack trace for Permissions-Policy related errors
+  const stackTrace = new Error().stack || '';
   if (stackTrace.includes('Unrecognized feature') || 
       stackTrace.includes('Permissions-Policy') ||
       stackTrace.includes('fd9d1056-') ||
       stackTrace.includes('f7c28dad-') ||
       stackTrace.includes('6967-3be585539776f3cb.js')) {
-    // Prevent the reload by canceling the event
-    event.preventDefault();
-    event.returnValue = '';
+    // Prevent the reload
     console.log('Prevented automatic reload from Permissions-Policy error');
-    return '';
+    return undefined as any;
   }
-});
+  return originalReload.apply(this, args);
+} as any;
 
 // Add global error handler for uncaught errors
 window.addEventListener('error', (event) => {
   // Check if this is a vendor script error we want to suppress
   if (
-    (event.filename && (
+    event.filename && (
       event.filename.includes('vendor-') ||
-      event.filename.includes('f7c28dad-')
-    )) ||
-    (event.message && (
-      event.message.includes("Cannot access 'z' before initialization") ||
-      event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
-      event.message.includes('setupWebSocket @ client') ||
-      event.message.includes('Unrecognized feature:') ||
-      event.message.includes('preloaded using link preload') ||
-      event.message.includes('ERR_BLOCKED_BY_CLIENT') ||
-      event.message.includes('Maximum call stack size exceeded')
-    ))
+      event.filename.includes('f7c28dad-') ||
+      event.message.includes("Cannot access 'z' before initialization")
+    ) ||
+    event.message.includes('WebSocket connection to \'ws://localhost:8080/\'') ||
+    event.message.includes('setupWebSocket @ client') ||
+    event.message.includes('Unrecognized feature:') ||
+    event.message.includes('preloaded using link preload')
   ) {
     // Prevent the error from showing in console
     event.preventDefault();

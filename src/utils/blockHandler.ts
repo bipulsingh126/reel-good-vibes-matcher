@@ -1,3 +1,4 @@
+
 /**
  * Utility to handle blocked resources and suppress related errors
  */
@@ -14,9 +15,23 @@ declare global {
 
 // Create dummy resources to replace blocked ones
 export function createDummyResources() {
+  // Ensure z is defined - use a more definitive approach
+  // Define z globally using Object.defineProperty for better control
+  if (typeof window.z === 'undefined') {
+    Object.defineProperty(window, 'z', {
+      value: {},
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+
+    // Add a flag to indicate z has been initialized
+    window.__zInitialized = true;
+  }
+  
   // Create a dummy WebSocket class to replace blocked WebSocket connections
   const OriginalWebSocket = window.WebSocket;
-  window.WebSocket = function(url: string, protocols?: string | string[]) {
+  const FakeWebSocket = function(url: string, protocols?: string | string[]) {
     if (url.includes('localhost:8080')) {
       // Create a fake WebSocket that doesn't actually connect
       const fakeWS = {
@@ -32,11 +47,7 @@ export function createDummyResources() {
         onmessage: null,
         send: () => {},
         close: () => {},
-        addEventListener: (event: string, callback: any) => {
-          if (event === 'open' && callback) {
-            setTimeout(() => callback(new Event('open')), 50);
-          }
-        },
+        addEventListener: () => {},
         removeEventListener: () => {},
         dispatchEvent: () => true
       };
@@ -55,34 +66,55 @@ export function createDummyResources() {
     return new OriginalWebSocket(url, protocols);
   } as unknown as typeof WebSocket;
   
-  // Preserve constructor properties
-  window.WebSocket.prototype = OriginalWebSocket.prototype;
+  // Copy the prototype without modifying read-only properties
+  FakeWebSocket.prototype = OriginalWebSocket.prototype;
   
-  // Copy static properties using Object.defineProperty
-  try {
-    Object.defineProperty(window.WebSocket, 'CONNECTING', { value: OriginalWebSocket.CONNECTING });
-    Object.defineProperty(window.WebSocket, 'OPEN', { value: OriginalWebSocket.OPEN });
-    Object.defineProperty(window.WebSocket, 'CLOSING', { value: OriginalWebSocket.CLOSING });
-    Object.defineProperty(window.WebSocket, 'CLOSED', { value: OriginalWebSocket.CLOSED });
-  } catch (e) {
-    console.warn('Failed to copy WebSocket static properties', e);
-  }
+  // Copy the static constants without assignment
+  Object.defineProperties(FakeWebSocket, {
+    CONNECTING: { value: OriginalWebSocket.CONNECTING },
+    OPEN: { value: OriginalWebSocket.OPEN },
+    CLOSING: { value: OriginalWebSocket.CLOSING },
+    CLOSED: { value: OriginalWebSocket.CLOSED }
+  });
   
-  // Patch any existing setupWebSocket function
-  if (window.hasOwnProperty('setupWebSocket')) {
-    const originalSetupWebSocket = (window as any).setupWebSocket;
-    (window as any).setupWebSocket = function(...args: any[]) {
-      try {
-        return originalSetupWebSocket.apply(this, args);
-      } catch (error) {
-        // Return a fake WebSocket connection
-        return {
-          readyState: 1,
-          send: () => {},
-          close: () => {}
-        };
+  // Replace the original WebSocket
+  window.WebSocket = FakeWebSocket;
+  
+  // Special fix for vendor-X8AeWD1T.js file which has the z initialization issue
+  const vendorScriptFix = () => {
+    // Find any script tags for the problematic vendor file
+    const vendorScripts = document.querySelectorAll('script[src*="vendor-"]');
+    vendorScripts.forEach(script => {
+      // For each vendor script, inject our z fix script right before it
+      const fixScript = document.createElement('script');
+      fixScript.textContent = `
+        // Ensure z exists before vendor script executes
+        (function() {
+          if (typeof window.z === 'undefined') {
+            Object.defineProperty(window, 'z', {
+              value: {},
+              writable: true,
+              configurable: true,
+              enumerable: true
+            });
+            window.__zInitialized = true;
+            console.log('z initialized via vendor script fix');
+          }
+        })();
+      `;
+      
+      if (script.parentNode) {
+        script.parentNode.insertBefore(fixScript, script);
       }
-    };
+    });
+  };
+  
+  // Execute the vendor script fix immediately
+  vendorScriptFix();
+  
+  // Also run it when DOM is ready to catch any scripts added after initial load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', vendorScriptFix);
   }
   
   // Create a MutationObserver to intercept script loading
@@ -121,32 +153,28 @@ export function createDummyResources() {
               }
             }
             
-            // Check for client.js scripts that might be causing WebSocket issues
-            if (script.src && script.src.includes('client.js')) {
-              // Intercept the script loading
-              const originalSrc = script.src;
-              script.src = '';
-              
-              // Fetch the script content and modify it
-              fetch(originalSrc)
-                .then(response => response.text())
-                .then(content => {
-                  // Replace problematic WebSocket code
-                  const modifiedContent = content
-                    .replace(/setupWebSocket\s*\([^)]*\)/g, '(() => { return { send: () => {}, close: () => {} }; })()')
-                    .replace(/new WebSocket\([^)]*\)/g, '({ readyState: 1, send: () => {}, close: () => {} })');
-                  
-                  // Create a new script with modified content
-                  const newScript = document.createElement('script');
-                  newScript.textContent = modifiedContent;
-                  script.parentNode?.insertBefore(newScript, script);
-                  script.parentNode?.removeChild(script);
-                })
-                .catch(() => {
-                  // If fetch fails, just simulate successful load
-                  const event = new Event('load');
-                  script.dispatchEvent(event);
-                });
+            // Special handling for vendor scripts
+            if (script.src && (script.src.includes('vendor-') || script.src.includes('X8AeWD1T'))) {
+              // Add z definition before vendor script loads
+              const zDefScript = document.createElement('script');
+              zDefScript.textContent = `
+                // Define z variable before vendor script executes
+                (function() {
+                  if (typeof window.z === 'undefined') {
+                    Object.defineProperty(window, 'z', {
+                      value: {},
+                      writable: true,
+                      configurable: true,
+                      enumerable: true
+                    });
+                    window.__zInitialized = true;
+                    console.log('z initialized via mutation observer');
+                  }
+                })();
+              `;
+              if (script.parentNode) {
+                script.parentNode.insertBefore(zDefScript, script);
+              }
             }
           }
         }
@@ -268,8 +296,7 @@ export function createDummyResources() {
     window.addEventListener('error', (event) => {
       if (event.message && 
           (event.message.includes('preloaded using link preload') || 
-           event.message.includes('facebook.com/tr') ||
-           event.message.includes('ERR_BLOCKED_BY_CLIENT'))) {
+           event.message.includes('facebook.com/tr'))) {
         // Prevent the error
         event.preventDefault();
         event.stopPropagation();
@@ -279,30 +306,22 @@ export function createDummyResources() {
     
     // Handle Facebook Pixel
     const handleFacebookPixel = () => {
-      try {
-        // First make sure fbq is defined as a no-op function before doing anything else
-        if (typeof window.fbq === 'undefined') {
-          // Create a mock fbq function using simple approach to avoid Proxy issues
-          window.fbq = function() { return window.fbq; } as any;
-          
-          // Add common methods to the mock fbq
-          window.fbq.queue = [];
-          window.fbq.push = function() { return window.fbq; };
-          window.fbq.loaded = true;
-          window.fbq.version = '2.0';
-          window.fbq.agent = 'tmgr';
-          window.fbq.disablePushState = true;
-          window.fbq.track = function() { return window.fbq; };
-          window.fbq.trackCustom = function() { return window.fbq; };
-          window.fbq.trackSingle = function() { return window.fbq; };
-          window.fbq.trackSingleCustom = function() { return window.fbq; };
-          window.fbq.init = function() { return window.fbq; };
-          window.fbq.event = function() { return window.fbq; };
-          
-          console.debug('Mock Facebook Pixel initialized');
-        }
-      } catch (error) {
-        // Silent catch - don't log anything to avoid additional console errors
+      // Create a dummy image to satisfy the preload requirement
+      const img = new Image();
+      img.src = 'https://www.facebook.com/tr?id=9151671744940732&ev=PageView&noscript=1';
+      img.style.display = 'none';
+      document.body.appendChild(img);
+      
+      // Create a dummy function for fbq
+      if (!window.hasOwnProperty('fbq')) {
+        Object.defineProperty(window, 'fbq', {
+          value: function() {
+            // Do nothing, just a stub
+            return true;
+          },
+          writable: true,
+          configurable: true
+        });
       }
     };
     
@@ -312,34 +331,31 @@ export function createDummyResources() {
     // Find all preloaded resources and handle them
     const preloadLinks = document.querySelectorAll('link[rel="preload"]');
     preloadLinks.forEach(link => {
-      const href = link.getAttribute('href') || '';
+      const href = link.getAttribute('href');
+      if (!href) return;
       
-      try {
-        if (href.includes('facebook.com/tr')) {
-          // Just call the handler, don't try to load anything
-          handleFacebookPixel();
-        } else if (!href.includes('cloudflare') && 
-                  !href.includes('beacon') && 
-                  !href.includes('facebook') &&
-                  !href.includes('fbevents')) {
-          // For other non-tracking preloaded resources, create an appropriate element
-          const asType = link.getAttribute('as') || '';
-          if (asType === 'script') {
-            const script = document.createElement('script');
-            script.src = href;
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
-          } else if (asType === 'style') {
-            const style = document.createElement('link');
-            style.rel = 'stylesheet';
-            style.href = href;
-            document.head.appendChild(style);
-          }
-          // Skip image loading as this might trigger network requests
+      if (href.includes('facebook.com/tr')) {
+        handleFacebookPixel();
+      } else {
+        // For other preloaded resources, create an appropriate element
+        const asType = link.getAttribute('as') || '';
+        if (asType === 'script') {
+          const script = document.createElement('script');
+          script.src = href;
+          script.async = true;
+          script.defer = true;
+          document.head.appendChild(script);
+        } else if (asType === 'style') {
+          const style = document.createElement('link');
+          style.rel = 'stylesheet';
+          style.href = href;
+          document.head.appendChild(style);
+        } else if (asType === 'image') {
+          const img = new Image();
+          img.src = href;
+          img.style.display = 'none';
+          document.body.appendChild(img);
         }
-      } catch (e) {
-        // Silently catch any errors to avoid console pollution
       }
     });
   }, 500);
