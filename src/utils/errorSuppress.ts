@@ -56,6 +56,26 @@ const REACT_COMPONENT_PATTERNS = [
   'Consider adding an error boundary'
 ];
 
+// List of patterns for suppressing errors completely
+const SUPPRESSED_PATTERNS = [
+  'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT',
+  'Uncaught SyntaxError: Unexpected token',
+  'error-reporter.js',
+  'vendor-patch.js',
+  'WebSocket connection',
+  'f7c28dad-',
+  'firebase',
+  'firestore',
+  'BloomFilter',
+  'Maximum call stack size exceeded',
+  'Identifier \'z\' has already been declared'
+];
+
+// Store original console methods
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+const originalConsoleLog = console.log;
+
 // Initialize z if needed
 if (typeof window !== 'undefined' && typeof window.z === 'undefined') {
   window.z = {};

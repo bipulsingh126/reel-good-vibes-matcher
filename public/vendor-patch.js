@@ -129,20 +129,65 @@ function patchToString() {
                 script.addEventListener('error', function(e) {
                   console.log('Handling vendor script load error');
                   if (typeof window.z === 'undefined') {
-                    window.z = originalZ || {};
+                    window.z = {};
                   }
                   e.preventDefault();
                   return false;
                 });
               }
-              
+            }
+          }
+        }
+      }
+    }
+  });
+  
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  // Also patch any existing elements
+  document.querySelectorAll('[data-radix-popper-content-wrapper]').forEach(patchElement);
+}
+
+// Function to patch a popper element to prevent stack overflow
+function patchElement(element) {
+  // If it's already patched, skip it
+  if (element.__patched) return;
+  element.__patched = true;
+  
+  try {
+    // Replace toString to prevent stack overflow
+    const originalToString = element.toString;
+    element.toString = function() {
+      return "[PopperContent]";
+    };
+  } catch (e) {
+    console.warn("Failed to patch element toString:", e);
+  }
+}
+
+// Function to watch for popper elements
+function watchForPopperElements() {
+  if (window.__VENDOR_FIX__.popperWatch) return;
+  window.__VENDOR_FIX__.popperWatch = true;
+
+  try {
+    // Create a MutationObserver to detect popper elements
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList') {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === 1) { // Element node
               // Check children
               const poppers = node.querySelectorAll('[data-radix-popper-content-wrapper]');
               poppers.forEach(patchElement);
             }
-          });
+          }
         }
-      });
+      }
     });
     
     // Start observing
@@ -199,8 +244,4 @@ function applyPatches() {
 
 // Apply immediately and also after page load
 applyPatches();
-window.addEventListener('DOMContentLoaded', applyPatches);
 window.addEventListener('load', applyPatches);
-
-// Apply again after a delay to catch late-loaded elements
-setTimeout(applyPatches, 1000);
